@@ -87,12 +87,26 @@ npm run start-http
 
 The web UI will be available at http://localhost:3000
 
-## Using with Claude Desktop
+## Using with Claude and Other AI Tools
+
+### Claude Desktop
 
 To use the server with Claude Desktop, add the following to your Claude Desktop config file:
 
 **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "pytest-mcp-server": {
+      "command": "pytest-mcp-server"
+    }
+  }
+}
+```
+
+Or if you've cloned the repository instead of installing from npm:
 
 ```json
 {
@@ -104,6 +118,23 @@ To use the server with Claude Desktop, add the following to your Claude Desktop 
   }
 }
 ```
+
+### In your IDE or Editor
+
+To use with  In your IDE or Editor, add this to your configuration:
+
+```json
+{
+  "mcpServers": {
+    "pytest-mcp-server": {
+      "command": "npx",
+      "args": ["-y", "pytest-mcp-server"]
+    }
+  }
+}
+```
+
+
 
 ## Pytest Integration
 

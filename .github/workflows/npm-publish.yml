@@ -34,13 +34,27 @@ jobs:
       - name: Update version (from workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
-          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          # Only update if versions are different
+          if [ "$CURRENT_VERSION" != "${{ github.event.inputs.version }}" ]; then
+            npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          else
+            echo "Version is already $CURRENT_VERSION, skipping version update"
+          fi
         
       - name: Update version (from release)
         if: github.event_name == 'release'
         run: |
           VERSION=$(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
-          npm version $VERSION --no-git-tag-version
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          # Only update if versions are different
+          if [ "$CURRENT_VERSION" != "$VERSION" ]; then
+            npm version $VERSION --no-git-tag-version
+          else
+            echo "Version is already $CURRENT_VERSION, skipping version update"
+          fi
         
       - name: Publish to npm.js
         run: npm publish
@@ -52,6 +66,7 @@ jobs:
         uses: metcalfc/changelog-generator@v4.0.1
         with:
           myToken: ${{ secrets.GH_TOKEN }}
+          max-issues: 100
           
       - name: Update release with changelog
         if: github.event_name == 'release'
