@@ -1,0 +1,56 @@
+{
+  "name": "pytest-mcp-server",
+  "version": "1.0.0",
+  "description": "A Model Context Protocol (MCP) server for tracking and debugging pytest failures using the 9 principles",
+  "type": "module",
+  "bin": {
+    "pytest-mcp-server": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "homepage": "https://github.com/yourusername/pytest-mcp-server",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/pytest-mcp-server.git"
+  },
+  "keywords": [
+    "pytest",
+    "debugging",
+    "mcp",
+    "llm",
+    "test",
+    "failures",
+    "claude"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc && mcp-build",
+    "build:web": "cd web-ui && npm install && npm run build",
+    "build:all": "npm run build && npm run build:web",
+    "watch": "tsc --watch",
+    "start": "node dist/cli.js start",
+    "start-http": "node dist/http-server.js",
+    "prepublishOnly": "npm run build:all",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.3",
+    "mcp-framework": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/body-parser": "^1.19.5",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  }
+}
