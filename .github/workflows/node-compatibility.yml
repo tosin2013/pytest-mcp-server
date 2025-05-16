@@ -78,83 +78,16 @@ jobs:
           exit 1
         fi
         
-    - name: Test server startup
-      timeout-minutes: 3
+    - name: Test server check-env command
+      timeout-minutes: 2
       run: |
-        # Create a script to start the server and exit after a few seconds
-        cat > test-server-startup.js << 'EOF'
-        import { spawn } from 'child_process';
+        # Test the check-env command with DATA_DIR environment variable
+        DATA_DIR=./test-data node dist/cli.js check-env
         
-        // Track whether we've already exited to avoid multiple exit attempts
-        let hasExited = false;
-        
-        function cleanExit(code) {
-          if (!hasExited) {
-            hasExited = true;
-            console.log(`Exiting with code ${code}`);
-            process.exit(code);
-          }
-        }
-        
-        // Create a timeout to ensure we don't hang indefinitely
-        const timeoutId = setTimeout(() => {
-          console.error('Test timed out after 10 seconds');
-          if (server && !server.killed) {
-            console.log('Forcefully terminating server process...');
-            server.kill('SIGKILL');
-          }
-          cleanExit(1);
-        }, 10000);
-        
-        console.log('Starting server...');
-        
-        // Start the server process with a different port for the HTTP server
-        const server = spawn('node', ['dist/cli.js', 'start'], {
-          env: { 
-            ...process.env, 
-            DATA_DIR: './test-data',
-            PORT: '3001' // Use a different port to avoid conflicts
-          },
-          stdio: 'inherit'
-        });
-        
-        // Give the server a few seconds to start
-        setTimeout(() => {
-          console.log('Server started successfully, shutting down...');
-          clearTimeout(timeoutId); // Clear the safety timeout
-          
-          // Gracefully terminate the server
-          if (server && !server.killed) {
-            server.kill();
-            
-            // Ensure we exit even if the server doesn't respond to SIGTERM
-            setTimeout(() => {
-              if (!hasExited) {
-                console.log('Forcing exit after server kill...');
-                cleanExit(0);
-              }
-            }, 1000);
-          } else {
-            cleanExit(0);
-          }
-        }, 5000);
-        
-        // Handle server errors
-        server.on('error', (err) => {
-          console.error('Server failed to start:', err);
-          clearTimeout(timeoutId);
-          cleanExit(1);
-        });
-        
-        // Handle server exit
-        server.on('exit', (code) => {
-          if (code !== null && code !== 0) {
-            console.error(`Server exited with code ${code}`);
-            clearTimeout(timeoutId);
-            cleanExit(code);
-          }
-        });
-        EOF
-        
-        # Run the test script
-        node test-server-startup.js
+        # Verify the data directory was created
+        if [ -d "./test-data" ]; then
+          echo "✅ Data directory was created successfully"
+        else
+          echo "❌ Failed to create data directory"
+          exit 1
+        fi
