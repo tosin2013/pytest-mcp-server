@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server designed to help track pytest failures and resolve errors faster using the 9 principles of debugging.
 
+[![Node.js Compatibility Tests](https://github.com/tosin2013/pytest-mcp-server/actions/workflows/node-compatibility.yml/badge.svg)](https://github.com/tosin2013/pytest-mcp-server/actions/workflows/node-compatibility.yml)
+
 ## Overview
 
 This MCP server provides tools for:
