@@ -52,12 +52,29 @@ if (!fs.existsSync(options.dataDir)) {
 process.env.DATA_DIR = options.dataDir;
 console.log(`✅ Using data directory: ${process.env.DATA_DIR}`);
 
+// Read package.json for version information
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const packageJsonPath = path.join(__dirname, '..', 'package.json');
+let packageVersion = '1.0.0'; // Default fallback version
+
+try {
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  packageVersion = packageJson.version || packageVersion;
+} catch (error: any) {
+  console.warn(`Warning: Could not read package.json for version info: ${error.message}`);
+}
+
 async function startMcpServer() {
   console.log("Starting Pytest MCP Server...");
   
   try {
-    // Start MCP server
-    const server = new MCPServer();
+    // Start MCP server with explicit name and version from package.json
+    const server = new MCPServer({
+      name: "pytest-mcp-server",
+      version: packageVersion
+    });
     await server.start();
     console.log("✅ MCP server started successfully with 9 debugging principles!");
     
