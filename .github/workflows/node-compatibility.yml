@@ -32,6 +32,7 @@ jobs:
       run: npm test
       
     - name: Validate DATA_DIR environment variable
+      timeout-minutes: 2
       run: |
         # Create test data directory
         mkdir -p ./test-data
@@ -48,6 +49,7 @@ jobs:
         fi
         
     - name: Test server startup
+      timeout-minutes: 3
       run: |
         # Create a script to start the server and then exit after a few seconds
         cat > test-server-startup.js << 'EOF'
