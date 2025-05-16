@@ -49,7 +49,7 @@ pytest-mcp-server start
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pytest-mcp-server.git
+git clone https://github.com/tosin2013/pytest-mcp-server.git
 cd pytest-mcp-server
 
 # Install dependencies
