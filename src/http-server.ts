@@ -31,11 +31,14 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Ensure data directory exists
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Use DATA_DIR from environment variable or default to a directory in the current working directory
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+
+// Set DATA_DIR in the environment for other modules to use
+process.env.DATA_DIR = DATA_DIR;
 
 // Routes
 
