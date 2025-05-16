@@ -108,9 +108,13 @@ jobs:
         
         console.log('Starting server...');
         
-        // Start the server process
+        // Start the server process with a different port for the HTTP server
         const server = spawn('node', ['dist/cli.js', 'start'], {
-          env: { ...process.env, DATA_DIR: './test-data' },
+          env: { 
+            ...process.env, 
+            DATA_DIR: './test-data',
+            PORT: '3001' // Use a different port to avoid conflicts
+          },
           stdio: 'inherit'
         });
         
