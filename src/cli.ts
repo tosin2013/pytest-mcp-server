@@ -7,6 +7,12 @@ import { MCPServer } from "mcp-framework";
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory where the package is installed
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PACKAGE_ROOT = path.resolve(__dirname, '..');
 
 // Import our tool modules to ensure they're registered
 import "./tools/PytestFailureTool.js";
@@ -53,10 +59,7 @@ process.env.DATA_DIR = options.dataDir;
 console.log(`✅ Using data directory: ${process.env.DATA_DIR}`);
 
 // Read package.json for version information
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const packageJsonPath = path.join(__dirname, '..', 'package.json');
+const packageJsonPath = path.join(PACKAGE_ROOT, 'package.json');
 let packageVersion = '1.0.0'; // Default fallback version
 
 try {
@@ -80,6 +83,9 @@ async function startMcpServer() {
     
     // Start HTTP server if web UI is enabled
     if (options.webUi) {
+      // Set PORT environment variable for http-server.js to use
+      process.env.PORT = options.port.toString();
+      
       httpApp.listen(options.port, () => {
         console.log(`✅ HTTP server running on port ${options.port}`);
         console.log(`🔍 Web UI available at http://localhost:${options.port}`);

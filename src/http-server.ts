@@ -4,6 +4,12 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the directory where the package is installed
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PACKAGE_ROOT = path.resolve(__dirname, '..');
 
 // Import our tools
 import PytestFailureTool from './tools/PytestFailureTool.js';
@@ -143,7 +149,7 @@ app.post('/api/debug', async (req: Request, res: Response) => {
 });
 
 // Serve static files from web UI build directory if it exists
-const WEB_UI_BUILD_DIR = path.join(process.cwd(), 'web-ui/build');
+const WEB_UI_BUILD_DIR = path.join(PACKAGE_ROOT, 'web-ui/build');
 if (fs.existsSync(WEB_UI_BUILD_DIR)) {
   console.log(`Serving web UI from ${WEB_UI_BUILD_DIR}`);
   app.use(express.static(WEB_UI_BUILD_DIR));

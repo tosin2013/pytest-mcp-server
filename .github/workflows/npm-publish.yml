@@ -28,8 +28,46 @@ jobs:
       - name: Run tests
         run: npm test
         
-      - name: Build package
-        run: npm run build
+      - name: Validate DATA_DIR handling
+        run: |
+          # Create test data directory
+          mkdir -p ./test-data
+          
+          # Create a test script that validates DATA_DIR handling
+          cat > test-data-dir.js << 'EOF'
+          import fs from 'fs';
+          import path from 'path';
+          
+          // Get DATA_DIR from environment variable
+          const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data");
+          console.log(`Testing DATA_DIR: ${dataDir}`);
+          
+          // Ensure directory exists
+          if (!fs.existsSync(dataDir)) {
+            console.log(`Creating directory: ${dataDir}`);
+            fs.mkdirSync(dataDir, { recursive: true });
+          }
+          
+          // Test write access
+          try {
+            const testFile = path.join(dataDir, '.test-file');
+            fs.writeFileSync(testFile, 'test');
+            console.log(`✅ Successfully wrote test file: ${testFile}`);
+            fs.unlinkSync(testFile); // Clean up
+            console.log(`✅ Successfully deleted test file`);
+            console.log(`✅ DATA_DIR is valid and writable: ${dataDir}`);
+            process.exit(0);
+          } catch (error) {
+            console.error(`❌ Error with DATA_DIR: ${error.message}`);
+            process.exit(1);
+          }
+          EOF
+          
+          # Run the test script with DATA_DIR environment variable
+          DATA_DIR=./test-data node test-data-dir.js
+        
+      - name: Build package and web UI
+        run: npm run build:all
         
       - name: Update version (from workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -76,8 +114,26 @@ jobs:
             ${{ steps.changelog.outputs.changelog }}
             
             ## Installation
+            ```bash
+            # Install globally
+            npm install -g pytest-mcp-server
+            
+            # Run with custom data directory
+            DATA_DIR=~/pytest-data pytest-mcp-server start
+            # OR
+            pytest-mcp-server start --data-dir ~/pytest-data
             ```
-            npm install pytest-mcp-server
+            
+            ## Configuration with Claude, Windsurf, or Cursor
+            ```json
+            {
+              "mcpServers": {
+                "pytest-mcp-server": {
+                  "command": "pytest-mcp-server",
+                  "args": ["start", "--data-dir", "~/pytest-data"]
+                }
+              }
+            }
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }} 

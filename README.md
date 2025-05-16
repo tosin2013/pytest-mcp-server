@@ -95,12 +95,56 @@ npm run start-http
 
 The web UI will be available at http://localhost:3000
 
-## Environment Variables
+## Environment Variables and Configuration
 
-The following environment variables can be used to configure the server:
+The pytest-mcp-server uses environment variables for configuration. You can view the current configuration using:
 
-- `PORT`: HTTP server port (default: 3000)
-- `DATA_DIR`: Directory where failure data is stored (default: `./data`)
+```bash
+pytest-mcp-server check-env
+```
+
+This will display all environment variables used by the server and their current values.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | HTTP server port | `3000` |
+| `DATA_DIR` | Directory for storing failure data | `./data` in current directory |
+
+### Data Directory Permissions
+
+When configuring the data directory, ensure that:
+
+1. The user running the MCP server has **read and write permissions** for the data directory
+2. All parent directories have **execute permissions** to allow navigation to the data directory
+3. For Windsurf and Cursor, use a directory in your home folder to avoid permission issues
+
+**Recommended locations:**
+- macOS/Linux: `~/pytest-data` or another directory in your home folder
+- Windows: A directory in your user profile
+
+**Setting permissions (macOS/Linux):**
+```bash
+# Create directory in home folder (recommended)
+mkdir -p ~/pytest-data
+chmod 755 ~/pytest-data
+```
+
+**Avoid:**
+- System directories that require elevated permissions
+- Network drives with unreliable connections
+- Directories with special characters in the path
+
+You can check your current environment configuration by running:
+
+```bash
+# Check environment configuration
+pytest-mcp-server check-env
+
+# With environment variables
+DATA_DIR=/path/to/data pytest-mcp-server check-env
+```
+
+This will display the current values of all environment variables used by the server.
 
 ### Important Note on Data Directory
 
@@ -167,17 +211,7 @@ To use the server with Claude Desktop, add the following to your Claude Desktop 
 **MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
-```json
-{
-  "mcpServers": {
-    "pytest-mcp-server": {
-      "command": "pytest-mcp-server"
-    }
-  }
-}
-```
-
-If you need to specify a custom data directory, you can add environment variables:
+#### Option 1: Using globally installed package
 
 ```json
 {
@@ -185,21 +219,69 @@ If you need to specify a custom data directory, you can add environment variable
     "pytest-mcp-server": {
       "command": "pytest-mcp-server",
       "env": {
-        "DATA_DIR": "/path/to/your/data"
+        "DATA_DIR": "/path/to/your/data/directory"
       }
     }
   }
 }
 ```
 
-Or if you've cloned the repository instead of installing from npm:
+#### Option 2: Using npx (no global installation)
+
+```json
+{
+  "mcpServers": {
+    "pytest-mcp-server": {
+      "command": "npx",
+      "args": ["pytest-mcp-server"],
+      "env": {
+        "DATA_DIR": "/path/to/your/data/directory"
+      }
+    }
+  }
+}
+```
+
+#### Configuration Options
+
+You can customize the server configuration in several ways:
+
+**Setting a custom data directory with environment variables:**
+
+```json
+{
+  "mcpServers": {
+    "pytest-mcp-server": {
+      "command": "pytest-mcp-server",
+      "env": {
+        "DATA_DIR": "/path/to/your/data/directory"
+      }
+    }
+  }
+}
+```
+
+**Using command-line arguments:**
+
+```json
+{
+  "mcpServers": {
+    "pytest-mcp-server": {
+      "command": "pytest-mcp-server",
+      "args": ["start", "--data-dir", "/path/to/your/data"]
+    }
+  }
+}
+```
+
+**Running from a local repository clone:**
 
 ```json
 {
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "node",
-      "args": ["/absolute/path/to/pytest-mcp-server/dist/index.js"],
+      "args": ["/absolute/path/to/pytest-mcp-server/dist/cli.js", "start"],
       "env": {
         "DATA_DIR": "/path/to/your/data"
       }
