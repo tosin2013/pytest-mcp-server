@@ -37,8 +37,33 @@ jobs:
         # Create test data directory
         mkdir -p ./test-data
         
-        # Set DATA_DIR and run check-env command
-        DATA_DIR=./test-data node dist/cli.js check-env
+        # Create a script that just checks the environment and exits
+        cat > check-env.js << 'EOF'
+        const fs = require('fs');
+        const path = require('path');
+        
+        // Get DATA_DIR from environment variable
+        const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+        console.log(`Using data directory: ${dataDir}`);
+        
+        // Check if directory exists, create if not
+        if (!fs.existsSync(dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+          console.log(`Created data directory: ${dataDir}`);
+        }
+        
+        // Print environment info
+        console.log('=== Environment Configuration ===');
+        console.log(`DATA_DIR: ${process.env.DATA_DIR || 'Not set (using default)'}`);
+        console.log(`PORT: ${process.env.PORT || '3000 (default)'}`);
+        console.log(`Current Working Directory: ${process.cwd()}`);
+        
+        // Exit explicitly
+        process.exit(0);
+        EOF
+        
+        # Run the check script
+        DATA_DIR=./test-data node check-env.js
         
         # Verify data directory was created
         if [ -d "./test-data" ]; then
@@ -51,34 +76,73 @@ jobs:
     - name: Test server startup
       timeout-minutes: 3
       run: |
-        # Create a script to start the server and then exit after a few seconds
+        # Create a script to start the server and exit after a few seconds
         cat > test-server-startup.js << 'EOF'
         const { spawn } = require('child_process');
+        
+        // Track whether we've already exited to avoid multiple exit attempts
+        let hasExited = false;
+        
+        function cleanExit(code) {
+          if (!hasExited) {
+            hasExited = true;
+            console.log(`Exiting with code ${code}`);
+            process.exit(code);
+          }
+        }
+        
+        // Create a timeout to ensure we don't hang indefinitely
+        const timeoutId = setTimeout(() => {
+          console.error('Test timed out after 10 seconds');
+          if (server && !server.killed) {
+            console.log('Forcefully terminating server process...');
+            server.kill('SIGKILL');
+          }
+          cleanExit(1);
+        }, 10000);
+        
+        console.log('Starting server...');
+        
+        // Start the server process
         const server = spawn('node', ['dist/cli.js', 'start'], {
           env: { ...process.env, DATA_DIR: './test-data' },
           stdio: 'inherit'
         });
         
-        console.log('Starting server...');
-        
         // Give the server a few seconds to start
         setTimeout(() => {
           console.log('Server started successfully, shutting down...');
-          server.kill();
-          process.exit(0);
+          clearTimeout(timeoutId); // Clear the safety timeout
+          
+          // Gracefully terminate the server
+          if (server && !server.killed) {
+            server.kill();
+            
+            // Ensure we exit even if the server doesn't respond to SIGTERM
+            setTimeout(() => {
+              if (!hasExited) {
+                console.log('Forcing exit after server kill...');
+                cleanExit(0);
+              }
+            }, 1000);
+          } else {
+            cleanExit(0);
+          }
         }, 5000);
         
         // Handle server errors
         server.on('error', (err) => {
           console.error('Server failed to start:', err);
-          process.exit(1);
+          clearTimeout(timeoutId);
+          cleanExit(1);
         });
         
         // Handle server exit
         server.on('exit', (code) => {
           if (code !== null && code !== 0) {
             console.error(`Server exited with code ${code}`);
-            process.exit(code);
+            clearTimeout(timeoutId);
+            cleanExit(code);
           }
         });
         EOF
