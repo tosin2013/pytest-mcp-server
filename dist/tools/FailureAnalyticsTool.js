@@ -2,19 +2,13 @@ import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
 import path from 'path';
-// Ensure data directory exists
-const DATA_DIR = path.join(process.cwd(), 'data');
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-const FAILURES_FILE = path.join(DATA_DIR, 'failures.json');
-const FAILURE_GROUPS_FILE = path.join(DATA_DIR, 'failure_groups.json');
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
+// Get file paths using the utility module
+const FAILURES_FILE = getDataFilePath('failures.json');
+const FAILURE_GROUPS_FILE = getDataFilePath('failure_groups.json');
 // Initialize files if they don't exist
-for (const file of [FAILURES_FILE, FAILURE_GROUPS_FILE]) {
-    if (!fs.existsSync(file)) {
-        fs.writeFileSync(file, JSON.stringify({}));
-    }
-}
+ensureDataFileExists('failures.json');
+ensureDataFileExists('failure_groups.json');
 class FailureAnalyticsTool extends MCPTool {
     name = "analyze_failures";
     description = "Group and analyze similar test failures, generate insights, and automate triage";

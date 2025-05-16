@@ -1,20 +1,13 @@
 import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
-import path from 'path';
-// Ensure data directory exists
-const DATA_DIR = path.join(process.cwd(), 'data');
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-const FAILURES_FILE = path.join(DATA_DIR, 'failures.json');
-const DEBUG_SESSIONS_FILE = path.join(DATA_DIR, 'debug_sessions.json');
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
+// Get file paths using the utility module
+const FAILURES_FILE = getDataFilePath('failures.json');
+const DEBUG_SESSIONS_FILE = getDataFilePath('debug_sessions.json');
 // Initialize files if they don't exist
-for (const file of [FAILURES_FILE, DEBUG_SESSIONS_FILE]) {
-    if (!fs.existsSync(file)) {
-        fs.writeFileSync(file, JSON.stringify({}));
-    }
-}
+ensureDataFileExists('failures.json');
+ensureDataFileExists('debug_sessions.json');
 class PytestFailureTool extends MCPTool {
     name = "register_pytest_failure";
     description = "Register a pytest test failure for debugging with LLM assistance";

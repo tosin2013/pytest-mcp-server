@@ -2,6 +2,7 @@ import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
 import path from 'path';
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
 
 interface PytestFailureInput {
   test_name: string;
@@ -35,21 +36,13 @@ interface DebugSession {
   debug_steps: DebugStep[];
 }
 
-// Ensure data directory exists
-const DATA_DIR = path.join(process.cwd(), 'data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-const FAILURES_FILE = path.join(DATA_DIR, 'failures.json');
-const DEBUG_SESSIONS_FILE = path.join(DATA_DIR, 'debug_sessions.json');
+// Get file paths using the utility module
+const FAILURES_FILE = getDataFilePath('failures.json');
+const DEBUG_SESSIONS_FILE = getDataFilePath('debug_sessions.json');
 
 // Initialize files if they don't exist
-for (const file of [FAILURES_FILE, DEBUG_SESSIONS_FILE]) {
-  if (!fs.existsSync(file)) {
-    fs.writeFileSync(file, JSON.stringify({}));
-  }
-}
+ensureDataFileExists('failures.json');
+ensureDataFileExists('debug_sessions.json');
 
 class PytestFailureTool extends MCPTool<PytestFailureInput> {
   name = "register_pytest_failure";

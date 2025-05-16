@@ -2,6 +2,7 @@ import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
 import path from 'path';
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
 
 interface GetFailureInfoInput {
   failure_id: string;
@@ -36,10 +37,13 @@ interface DebugSession {
   debug_steps: DebugStep[];
 }
 
-// Constants for file paths
-const DATA_DIR = path.join(process.cwd(), 'data');
-const FAILURES_FILE = path.join(DATA_DIR, 'failures.json');
-const DEBUG_SESSIONS_FILE = path.join(DATA_DIR, 'debug_sessions.json');
+// Get file paths using the utility module
+const FAILURES_FILE = getDataFilePath('failures.json');
+const DEBUG_SESSIONS_FILE = getDataFilePath('debug_sessions.json');
+
+// Initialize files if they don't exist
+ensureDataFileExists('failures.json');
+ensureDataFileExists('debug_sessions.json');
 
 // Define the 9 debugging principles
 const DEBUG_PRINCIPLES = [

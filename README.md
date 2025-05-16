@@ -102,17 +102,45 @@ The following environment variables can be used to configure the server:
 
 ### Important Note on Data Directory
 
-While the server attempts to create the data directory automatically, you might encounter permission issues on some systems. If you get an error related to directory creation, manually create the data directory before starting the server:
+While the server attempts to create the data directory automatically, you might encounter permission issues on some systems. If you get an error related to directory creation, consider the following:
 
 ```bash
 # Create the data directory manually
-mkdir -p /path/to/data
+mkdir -p ./my-data
 
 # Then start the server with that directory
-DATA_DIR=/path/to/data pytest-mcp-server start
+DATA_DIR=./my-data pytest-mcp-server start
 ```
 
-Ensure the user running the server has write permissions to the specified directory.
+⚠️ **Warning**: Avoid using absolute paths at the root level (like `/data`) unless you have root permissions. This will likely cause permission errors like:
+
+```
+Error: ENOENT: no such file or directory, mkdir '/data'
+```
+
+Instead, use one of these approaches:
+
+1. **Relative paths** (recommended for most users):
+   ```bash
+   DATA_DIR=./my-data pytest-mcp-server start
+   ```
+
+2. **Home directory paths**:
+   ```bash
+   DATA_DIR=$HOME/pytest-data pytest-mcp-server start
+   ```
+
+3. **Absolute paths with proper permissions**:
+   ```bash
+   # Create directory with proper permissions first
+   sudo mkdir -p /var/lib/pytest-mcp
+   sudo chown $USER /var/lib/pytest-mcp
+   
+   # Then use it
+   DATA_DIR=/var/lib/pytest-mcp pytest-mcp-server start
+   ```
+
+Always ensure the user running the server has write permissions to the specified directory.
 
 ### Verifying Environment Variables
 

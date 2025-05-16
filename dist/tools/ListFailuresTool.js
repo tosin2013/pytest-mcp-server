@@ -1,10 +1,11 @@
 import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
-import path from 'path';
-// Constants for file paths
-const DATA_DIR = path.join(process.cwd(), 'data');
-const FAILURES_FILE = path.join(DATA_DIR, 'failures.json');
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
+// Get file paths using the utility module
+const FAILURES_FILE = getDataFilePath('failures.json');
+// Initialize files if they don't exist
+ensureDataFileExists('failures.json');
 class ListFailuresTool extends MCPTool {
     name = "list_failures";
     description = "List all pytest failures with optional status filtering";
@@ -15,14 +16,6 @@ class ListFailuresTool extends MCPTool {
         },
     };
     async execute(input) {
-        // Ensure data directory exists
-        if (!fs.existsSync(DATA_DIR)) {
-            fs.mkdirSync(DATA_DIR, { recursive: true });
-        }
-        // Initialize failures file if it doesn't exist
-        if (!fs.existsSync(FAILURES_FILE)) {
-            fs.writeFileSync(FAILURES_FILE, JSON.stringify({}));
-        }
         // Load failures
         let failures = {};
         try {

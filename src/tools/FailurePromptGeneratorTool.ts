@@ -2,6 +2,7 @@ import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
 import path from 'path';
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
 
 interface PromptGeneratorInput {
   group_id?: string;
@@ -21,14 +22,13 @@ interface FailureGroup {
   last_seen: string;
 }
 
-// Ensure data directory exists
-const DATA_DIR = path.join(process.cwd(), 'data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+// Get file paths using the utility module
+const FAILURES_FILE = getDataFilePath('failures.json');
+const FAILURE_GROUPS_FILE = getDataFilePath('failure_groups.json');
 
-const FAILURES_FILE = path.join(DATA_DIR, 'failures.json');
-const FAILURE_GROUPS_FILE = path.join(DATA_DIR, 'failure_groups.json');
+// Initialize files if they don't exist
+ensureDataFileExists('failures.json');
+ensureDataFileExists('failure_groups.json');
 
 class FailurePromptGeneratorTool extends MCPTool<PromptGeneratorInput> {
   name = "generate_debug_prompt";
