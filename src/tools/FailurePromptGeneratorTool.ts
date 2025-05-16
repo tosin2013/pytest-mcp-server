@@ -2,7 +2,7 @@ import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
 import path from 'path';
-import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory.js';
 
 interface PromptGeneratorInput {
   group_id?: string;

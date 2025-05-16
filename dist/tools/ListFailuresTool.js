@@ -1,7 +1,7 @@
 import { MCPTool } from "mcp-framework";
 import { z } from "zod";
 import fs from 'fs';
-import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory';
+import { getDataFilePath, ensureDataFileExists } from '../utils/dataDirectory.js';
 // Get file paths using the utility module
 const FAILURES_FILE = getDataFilePath('failures.json');
 // Initialize files if they don't exist
