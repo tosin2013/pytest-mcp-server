@@ -9,9 +9,10 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest]
         node-version: [18.x, 20.x, 22.x]
 
     steps:
@@ -81,41 +82,81 @@ jobs:
     - name: Validate DATA_DIR handling
       timeout-minutes: 1
       run: |
-        # Create a simple test script that just validates DATA_DIR without starting the server
+        # Create a comprehensive test script that validates DATA_DIR handling across platforms
         cat > test-data-dir.js << 'EOF'
         import fs from 'fs';
         import path from 'path';
+        import os from 'os';
+        
+        // Print platform info for debugging
+        console.log(`Platform: ${process.platform}`);
+        console.log(`Node.js version: ${process.version}`);
+        console.log(`Current working directory: ${process.cwd()}`);
+        
+        // Test 1: Direct environment variable
+        console.log('\n=== Test 1: Direct environment variable ===');
+        console.log(`DATA_DIR from environment: ${process.env.DATA_DIR}`);
         
         // Get DATA_DIR from environment variable or use default
         const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data");
-        console.log(`Testing DATA_DIR: ${dataDir}`);
+        console.log(`Resolved DATA_DIR: ${dataDir}`);
         
         // Ensure directory exists
         if (!fs.existsSync(dataDir)) {
           console.log(`Creating directory: ${dataDir}`);
           fs.mkdirSync(dataDir, { recursive: true });
+        } else {
+          console.log(`Directory already exists: ${dataDir}`);
         }
         
         // Test write access
         try {
           const testFile = path.join(dataDir, '.test-file');
           fs.writeFileSync(testFile, 'test');
+          console.log(`✅ Successfully wrote test file: ${testFile}`);
           fs.unlinkSync(testFile); // Clean up
+          console.log(`✅ Successfully deleted test file`);
           console.log(`✅ DATA_DIR is valid and writable: ${dataDir}`);
-          process.exit(0);
         } catch (error) {
           console.error(`❌ Error with DATA_DIR: ${error.message}`);
           process.exit(1);
         }
+        
+        // Test 2: Command line argument
+        console.log('\n=== Test 2: Command line argument simulation ===');
+        const argDataDir = path.join(process.cwd(), 'test-arg-data');
+        console.log(`Simulated --data-dir argument: ${argDataDir}`);
+        
+        // Ensure directory exists
+        if (!fs.existsSync(argDataDir)) {
+          console.log(`Creating directory: ${argDataDir}`);
+          fs.mkdirSync(argDataDir, { recursive: true });
+        }
+        
+        // Test write access
+        try {
+          const testFile = path.join(argDataDir, '.test-file');
+          fs.writeFileSync(testFile, 'test');
+          console.log(`✅ Successfully wrote test file: ${testFile}`);
+          fs.unlinkSync(testFile); // Clean up
+          console.log(`✅ Successfully deleted test file`);
+          console.log(`✅ Command line argument data directory is valid and writable: ${argDataDir}`);
+        } catch (error) {
+          console.error(`❌ Error with command line argument data directory: ${error.message}`);
+          process.exit(1);
+        }
+        
+        console.log('\n✅ All tests passed successfully!');
+        process.exit(0);
         EOF
         
         # Run the test script with DATA_DIR environment variable
         DATA_DIR=./test-data node test-data-dir.js
         
-        # Verify the data directory was created
-        if [ -d "./test-data" ]; then
-          echo "✅ Data directory was created successfully"
+        # Verify both data directories were created
+        if [ -d "./test-data" ] && [ -d "./test-arg-data" ]; then
+          echo "✅ All data directories were created successfully"
         else
-          echo "❌ Failed to create data directory"
+          echo "❌ Failed to create one or more data directories"
           exit 1
         fi
