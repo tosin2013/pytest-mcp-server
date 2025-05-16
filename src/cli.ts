@@ -50,6 +50,7 @@ if (!fs.existsSync(options.dataDir)) {
 
 // Set data directory as environment variable for tools to use
 process.env.DATA_DIR = options.dataDir;
+console.log(`✅ Using data directory: ${process.env.DATA_DIR}`);
 
 async function startMcpServer() {
   console.log("Starting Pytest MCP Server...");
@@ -83,6 +84,7 @@ Usage:
 
 Commands:
   start       Start the MCP server (default)
+  check-env   Display environment variable configuration
   help        Show this help message
 
 Options:
@@ -96,10 +98,23 @@ Examples:
   `);
 }
 
+function showEnvInfo() {
+  console.log(`
+=== Environment Configuration ===
+DATA_DIR: ${process.env.DATA_DIR}
+PORT: ${process.env.PORT || '3000 (default)'}
+Current Working Directory: ${process.cwd()}
+  `);
+}
+
 // Execute command
 switch (command) {
   case "start":
     startMcpServer();
+    break;
+  case "env":
+  case "check-env":
+    showEnvInfo();
     break;
   case "help":
   default:

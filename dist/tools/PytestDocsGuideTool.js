@@ -14,6 +14,8 @@ the 9 principles of debugging. This tool provides documentation about how to use
 2. **Structured Debugging Process**: Apply the 9 debugging principles systematically
 3. **Debugging History**: Track progress and analysis for each failure
 4. **Web UI Dashboard**: Visualize failures and debugging status
+5. **Failure Analytics**: Group and analyze similar test failures
+6. **Targeted Debug Prompts**: Generate specialized debugging prompts for LLMs
 
 ## Available Tools
 
@@ -21,6 +23,8 @@ the 9 principles of debugging. This tool provides documentation about how to use
 - **debug_with_principle**: Apply a debugging principle to a failure
 - **get_failure_info**: Retrieve information about a failure
 - **list_failures**: List all registered failures
+- **analyze_failures**: Group and analyze similar test failures
+- **generate_debug_prompt**: Create targeted debugging prompts
 - **pytest_docs_guide**: Get documentation about using the server (this tool)
   `,
     // Integration
@@ -354,6 +358,62 @@ Apply a debugging principle to a failure.
   }
 }
 \`\`\`
+
+### GET /api/analytics
+Get analytics and grouping for test failures.
+
+**Optional Query Parameters**:
+- group_by: Method to group failures (error_type, file_path, pattern)
+- time_range: Time range for analysis (all, today, week, month)
+- include_resolved: Whether to include resolved failures (true/false)
+
+**Response**:
+\`\`\`json
+{
+  "total_failures": 42,
+  "group_count": 5,
+  "groups": [
+    {
+      "id": "group_123",
+      "name": "TypeError Failures",
+      "pattern": "TypeError: cannot ACCESS property",
+      "count": 12,
+      "common_error_type": "TypeError",
+      "root_cause_hypothesis": "Possible null reference access",
+      "first_seen": "2023-09-01T12:00:00Z",
+      "last_seen": "2023-09-05T15:30:00Z"
+    }
+  ],
+  "insights": {
+    "most_frequent_errors": ["TypeError", "AssertionError"],
+    "trending_failures": ["group_123"],
+    "recent_patterns": ["cannot ACCESS property"]
+  }
+}
+\`\`\`
+
+### GET /api/prompts/:id
+Generate a debugging prompt for a failure or failure group.
+
+**Optional Query Parameters**:
+- prompt_style: Style of prompt (detailed, concise, step_by_step, root_cause)
+
+**Response**:
+\`\`\`json
+{
+  "title": "Debug Task: TypeError Failures (12 failures)",
+  "instructions": "Please analyze these 12 test failures and provide...",
+  "prompt": "The following failures show a pattern of TypeError...",
+  "group": {
+    "id": "group_123",
+    "name": "TypeError Failures",
+    "count": 12,
+    "common_error_type": "TypeError",
+    "hypothesis": "Possible null reference access"
+  },
+  "prompt_style": "detailed"
+}
+\`\`\`
   `,
     // Command-line client
     client: `
@@ -385,6 +445,18 @@ python test-client.py --action info --failure-id <failure_id>
 
 \`\`\`bash
 python test-client.py --action debug --failure-id <failure_id> --principle <1-9> --analysis "Your analysis here..."
+\`\`\`
+
+### Analyze Failures and Create Groups
+
+\`\`\`bash
+python test-client.py --action analyze --group-by error_type
+\`\`\`
+
+### Generate Debug Prompts
+
+\`\`\`bash
+python test-client.py --action prompt --failure-id <failure_id> --style detailed
 \`\`\`
 
 ### Run Full Demo
@@ -442,6 +514,8 @@ The dashboard provides an overview of all registered failures and their debuggin
 - Failure count by status (new, in-progress, resolved)
 - Recent failures list
 - Debugging progress charts
+- Failure group analytics
+- Trending error types
 
 ## Failure Details
 
@@ -453,6 +527,7 @@ The failure details view shows comprehensive information about a specific test f
 - Local variables at failure point
 - Debugging history and timeline
 - Applied principles and their analyses
+- Related failures in the same group
 
 ## Debugging Interface
 
@@ -463,6 +538,20 @@ The debugging interface helps apply the 9 principles to a failure:
 - Analysis input form
 - Recommendation for next steps
 - Debugging history timeline
+- AI-assisted prompt generation
+- One-click application of common solutions
+
+## Analytics Dashboard
+
+The analytics dashboard helps understand patterns and trends in test failures:
+
+**Features**:
+- Failure groups by error type, file path, or pattern
+- Error trend visualization over time
+- Most frequent failure locations
+- Auto-generated root cause hypotheses
+- Priority ranking of failures
+- Similar failures detection
 
 ## Settings
 
@@ -472,6 +561,157 @@ The settings page allows configuration of the server:
 - Server connection settings
 - Notification preferences
 - UI theme options
+- Analytics preferences
+- Debugging principle customization
+  `,
+    // New Topics
+    analytics: `
+# Failure Analytics
+
+The pytest-mcp-server includes powerful analytics capabilities to help identify patterns and group similar failures:
+
+## Failure Grouping
+
+Failures can be grouped by:
+- **Error Type**: Group by exception class (TypeError, AssertionError, etc.)
+- **File Path**: Group by failing test file
+- **Pattern**: Group by error message pattern matching
+
+## Time-Based Analysis
+
+Filter analysis by time periods:
+- Today
+- This week
+- This month
+- All time
+
+## Group Features
+
+Each failure group provides:
+- Common error type identification
+- Pattern detection in error messages
+- Root cause hypotheses generation
+- First and last occurrence timestamps
+- Automated prioritization based on frequency and recency
+- Triage recommendations
+
+## Using Analytics
+
+### Via HTTP API:
+
+\`\`\`
+GET /api/analytics?group_by=error_type&time_range=week&include_resolved=false
+\`\`\`
+
+### Via MCP Tool:
+
+\`\`\`
+analyze_failures(group_by="error_type", time_range="week", include_resolved=false)
+\`\`\`
+
+### Via Command-Line Client:
+
+\`\`\`bash
+python test-client.py --action analyze --group-by error_type --time-range week --include-resolved false
+\`\`\`
+
+## Example Analytics Response:
+
+\`\`\`json
+{
+  "total_failures": 42,
+  "group_count": 5,
+  "groups": [
+    {
+      "id": "group_123",
+      "name": "TypeError Failures",
+      "pattern": "TypeError: cannot ACCESS property",
+      "count": 12,
+      "common_error_type": "TypeError",
+      "root_cause_hypothesis": "Possible null reference access",
+      "first_seen": "2023-09-01T12:00:00Z",
+      "last_seen": "2023-09-05T15:30:00Z"
+    }
+  ],
+  "insights": {
+    "most_frequent_errors": ["TypeError", "AssertionError"],
+    "trending_failures": ["group_123"],
+    "recent_patterns": ["cannot ACCESS property"]
+  }
+}
+\`\`\`
+  `,
+    prompts: `
+# AI Prompt Generation
+
+The pytest-mcp-server can automatically generate tailored debugging prompts for Large Language Models (LLMs):
+
+## Purpose
+
+These specialized prompts help LLMs like Claude provide more effective debugging assistance by:
+- Focusing on the most relevant aspects of test failures
+- Including appropriate context and test information
+- Structuring the debugging request in an optimal way
+- Adapting the prompt style to the specific debugging need
+
+## Prompt Styles
+
+### Detailed
+
+Comprehensive analysis with full traceback, error context, and local variables. Best for complex failures requiring deep analysis.
+
+### Concise
+
+Brief summary highlighting only the key error details. Best for quick analysis of simple failures.
+
+### Step-by-Step
+
+Structured debugging approach following the 9 principles. Best for systematic debugging of complex issues.
+
+### Root Cause
+
+Focused prompt targeting root cause analysis only. Best for initial triage.
+
+## Using Prompt Generation
+
+### Via HTTP API:
+
+\`\`\`
+GET /api/prompts/group_123?prompt_style=detailed
+GET /api/prompts/failure_456?prompt_style=concise
+\`\`\`
+
+### Via MCP Tool:
+
+\`\`\`
+generate_debug_prompt(group_id="group_123", prompt_style="detailed")
+generate_debug_prompt(failure_id="failure_456", prompt_style="concise")
+\`\`\`
+
+### Via Command-Line Client:
+
+\`\`\`bash
+python test-client.py --action prompt --group-id group_123 --style detailed
+python test-client.py --action prompt --failure-id failure_456 --style concise
+\`\`\`
+
+## Example Prompt Response:
+
+\`\`\`json
+{
+  "title": "Debug Task: TypeError Failures (12 failures)",
+  "instructions": "Please analyze these 12 test failures and provide...",
+  "prompt": "The following failures show a pattern of TypeError...",
+  "group": {
+    "id": "group_123",
+    "name": "TypeError Failures",
+    "count": 12,
+    "common_error_type": "TypeError",
+    "hypothesis": "Possible null reference access"
+  },
+  "prompt_style": "detailed"
+}
+\`\`\`
   `
 };
 const ALL_TOPICS = Object.keys(DOCS);
@@ -526,7 +766,9 @@ pytest_docs_guide(topic="integration")
             principles: "Detailed explanation of the 9 debugging principles",
             api: "HTTP API documentation for programmatic integration",
             client: "Command-line client usage examples",
-            webui: "Web UI features and usage guide"
+            webui: "Web UI features and usage guide",
+            analytics: "Failure analytics and grouping capabilities",
+            prompts: "AI prompt generation for LLM-assisted debugging"
         };
         return descriptions[topic] || "Documentation topic";
     }

@@ -24,6 +24,16 @@ Each file serves as a simple key-value store, where the keys are identifiers (li
 
 The tools directly read from and write to these files when they need to access or modify data, without an intermediary data access layer or abstraction.
 
+### Data Directory Configuration
+
+The storage location for JSON files is configurable through the `DATA_DIR` environment variable. This allows users to specify a custom location for storing the data files, which is particularly useful for:
+
+- Persisting data across container restarts
+- Storing data in a shared location for team access
+- Keeping data in a location with specific permissions or backup policies
+
+If not specified, the server defaults to using a `data` directory in the current working directory.
+
 ## Identified DDD Elements
 
 ### Repositories (Implicit)

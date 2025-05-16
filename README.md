@@ -72,6 +72,9 @@ pytest-mcp-server start --port 8080
 
 # Specify a custom data directory
 pytest-mcp-server start --data-dir ./my-data
+
+# Or use environment variables
+DATA_DIR=/path/to/data PORT=8080 pytest-mcp-server start
 ```
 
 ### When installed from source
@@ -80,12 +83,50 @@ pytest-mcp-server start --data-dir ./my-data
 # Start the MCP server
 npm start
 
+# Start with environment variables
+DATA_DIR=/path/to/data PORT=8080 npm start
+
 # Build and start the HTTP server with web UI
 npm run build:all
 npm run start-http
 ```
 
 The web UI will be available at http://localhost:3000
+
+## Environment Variables
+
+The following environment variables can be used to configure the server:
+
+- `PORT`: HTTP server port (default: 3000)
+- `DATA_DIR`: Directory where failure data is stored (default: `./data`)
+
+### Important Note on Data Directory
+
+While the server attempts to create the data directory automatically, you might encounter permission issues on some systems. If you get an error related to directory creation, manually create the data directory before starting the server:
+
+```bash
+# Create the data directory manually
+mkdir -p /path/to/data
+
+# Then start the server with that directory
+DATA_DIR=/path/to/data pytest-mcp-server start
+```
+
+Ensure the user running the server has write permissions to the specified directory.
+
+### Verifying Environment Variables
+
+To verify that environment variables like DATA_DIR are correctly set, use the check-env command:
+
+```bash
+# Check environment configuration
+pytest-mcp-server check-env
+
+# With environment variables
+DATA_DIR=/path/to/data pytest-mcp-server check-env
+```
+
+This will display the current values of all environment variables used by the server.
 
 ## Using with Claude and Other AI Tools
 
@@ -106,6 +147,21 @@ To use the server with Claude Desktop, add the following to your Claude Desktop 
 }
 ```
 
+If you need to specify a custom data directory, you can add environment variables:
+
+```json
+{
+  "mcpServers": {
+    "pytest-mcp-server": {
+      "command": "pytest-mcp-server",
+      "env": {
+        "DATA_DIR": "/path/to/your/data"
+      }
+    }
+  }
+}
+```
+
 Or if you've cloned the repository instead of installing from npm:
 
 ```json
@@ -113,7 +169,10 @@ Or if you've cloned the repository instead of installing from npm:
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "node",
-      "args": ["/absolute/path/to/pytest-mcp-server/dist/index.js"]
+      "args": ["/absolute/path/to/pytest-mcp-server/dist/index.js"],
+      "env": {
+        "DATA_DIR": "/path/to/your/data"
+      }
     }
   }
 }
@@ -121,14 +180,17 @@ Or if you've cloned the repository instead of installing from npm:
 
 ### In your IDE or Editor
 
-To use with  In your IDE or Editor, add this to your configuration:
+To use with an IDE or Editor, add this to your configuration:
 
 ```json
 {
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "npx",
-      "args": ["-y", "pytest-mcp-server"]
+      "args": ["-y", "pytest-mcp-server"],
+      "env": {
+        "DATA_DIR": "/path/to/your/data"
+      }
     }
   }
 }
