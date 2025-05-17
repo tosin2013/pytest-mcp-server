@@ -8,6 +8,7 @@
   },
   "files": [
     "dist",
+    "web-ui/build",
     "README.md",
     "LICENSE"
   ],
@@ -41,7 +42,8 @@
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "express": "^4.18.3",
-    "mcp-framework": "^0.2.11"
+    "mcp-framework": "^0.2.11",
+    "pytest-mcp-server": "file:pytest-mcp-server-1.0.0.tgz"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.5",
