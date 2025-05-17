@@ -3,6 +3,11 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+// Get the directory where the package is installed
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PACKAGE_ROOT = path.resolve(__dirname, '..');
 // Import our tools
 import PytestFailureTool from './tools/PytestFailureTool.js';
 import DebugWithPrincipleTool from './tools/DebugWithPrincipleTool.js';
@@ -25,11 +30,13 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
-// Ensure data directory exists
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Use DATA_DIR from environment variable or default to a directory in the current working directory
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
+// Set DATA_DIR in the environment for other modules to use
+process.env.DATA_DIR = DATA_DIR;
 // Routes
 // Health check
 app.get('/health', (req, res) => {
@@ -131,7 +138,7 @@ app.post('/api/debug', async (req, res) => {
     }
 });
 // Serve static files from web UI build directory if it exists
-const WEB_UI_BUILD_DIR = path.join(process.cwd(), 'web-ui/build');
+const WEB_UI_BUILD_DIR = path.join(PACKAGE_ROOT, 'web-ui/build');
 if (fs.existsSync(WEB_UI_BUILD_DIR)) {
     console.log(`Serving web UI from ${WEB_UI_BUILD_DIR}`);
     app.use(express.static(WEB_UI_BUILD_DIR));
@@ -149,17 +156,20 @@ else {
     console.log('Run "cd web-ui && npm run build" to create the web UI build');
 }
 // Start server
-app.listen(PORT, () => {
-    console.log(`HTTP server running on port ${PORT}`);
-    console.log(`API endpoints:`);
-    console.log(`  GET  /health - Health check`);
-    console.log(`  GET  /api/docs - Get documentation about using the server`);
-    console.log(`  GET  /api/failures - List all failures`);
-    console.log(`  POST /api/failures - Register a new failure`);
-    console.log(`  GET  /api/failures/:id - Get failure info`);
-    console.log(`  POST /api/debug - Apply debugging principle`);
-    console.log(`  GET  /api/analytics - Analyze and group failures`);
-    console.log(`  GET  /api/prompt - Generate debugging prompts for failures`);
-    console.log(`Web UI available at http://localhost:${PORT}`);
-});
+// Remove the auto-starting app.listen() call and replace with a function
+export function startServer(port = PORT) {
+    return app.listen(port, () => {
+        console.log(`HTTP server running on port ${port}`);
+        console.log(`API endpoints:`);
+        console.log(`  GET  /health - Health check`);
+        console.log(`  GET  /api/docs - Get documentation about using the server`);
+        console.log(`  GET  /api/failures - List all failures`);
+        console.log(`  POST /api/failures - Register a new failure`);
+        console.log(`  GET  /api/failures/:id - Get failure info`);
+        console.log(`  POST /api/debug - Apply debugging principle`);
+        console.log(`  GET  /api/analytics - Analyze and group failures`);
+        console.log(`  GET  /api/prompt - Generate debugging prompts for failures`);
+        console.log(`Web UI available at http://localhost:${port}`);
+    });
+}
 export default app;

@@ -169,18 +169,21 @@ if (fs.existsSync(WEB_UI_BUILD_DIR)) {
 }
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`HTTP server running on port ${PORT}`);
-  console.log(`API endpoints:`);
-  console.log(`  GET  /health - Health check`);
-  console.log(`  GET  /api/docs - Get documentation about using the server`);
-  console.log(`  GET  /api/failures - List all failures`);
-  console.log(`  POST /api/failures - Register a new failure`);
-  console.log(`  GET  /api/failures/:id - Get failure info`);
-  console.log(`  POST /api/debug - Apply debugging principle`);
-  console.log(`  GET  /api/analytics - Analyze and group failures`);
-  console.log(`  GET  /api/prompt - Generate debugging prompts for failures`);
-  console.log(`Web UI available at http://localhost:${PORT}`);
-});
+// Remove the auto-starting app.listen() call and replace with a function
+export function startServer(port = PORT) {
+  return app.listen(port, () => {
+    console.log(`HTTP server running on port ${port}`);
+    console.log(`API endpoints:`);
+    console.log(`  GET  /health - Health check`);
+    console.log(`  GET  /api/docs - Get documentation about using the server`);
+    console.log(`  GET  /api/failures - List all failures`);
+    console.log(`  POST /api/failures - Register a new failure`);
+    console.log(`  GET  /api/failures/:id - Get failure info`);
+    console.log(`  POST /api/debug - Apply debugging principle`);
+    console.log(`  GET  /api/analytics - Analyze and group failures`);
+    console.log(`  GET  /api/prompt - Generate debugging prompts for failures`);
+    console.log(`Web UI available at http://localhost:${port}`);
+  });
+}
 
 export default app; 

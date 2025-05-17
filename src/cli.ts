@@ -24,7 +24,7 @@ import "./tools/FailureAnalyticsTool.js";
 import "./tools/FailurePromptGeneratorTool.js";
 
 // Import HTTP server app
-import httpApp from "./http-server.js";
+import httpApp, { startServer } from "./http-server.js";
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -35,6 +35,7 @@ const options = {
   port: parseInt(process.env.PORT || "3000", 10),
   dataDir: process.env.DATA_DIR || path.join(process.cwd(), "data"),
   webUi: true,
+  transport: process.env.TRANSPORT || "stdio" // Default transport type
 };
 
 // Parse options
@@ -46,6 +47,8 @@ for (let i = 1; i < args.length; i++) {
     options.dataDir = path.resolve(args[++i]);
   } else if (arg === "--no-web-ui") {
     options.webUi = false;
+  } else if (arg === "--transport") {
+    options.transport = args[++i];
   }
 }
 
@@ -73,25 +76,48 @@ async function startMcpServer() {
   console.log("Starting Pytest MCP Server...");
   
   try {
-    // Start MCP server with explicit name and version from package.json
-    const server = new MCPServer({
+    // Set PORT environment variable
+    process.env.PORT = options.port.toString();
+    
+    // Start MCP server with explicit name, version and transport configuration
+    const serverConfig: any = {
       name: "pytest-mcp-server",
-      version: packageVersion
-    });
+      version: packageVersion,
+    };
+    
+    // Configure transport based on options and HTTP server
+    if (options.transport === "sse") {
+      // Start HTTP server for SSE transport
+      // We're not awaiting httpApp.listen to avoid blocking
+      startServer(options.port);
+      
+      // Configure SSE transport
+      serverConfig.transport = {
+        type: "sse",
+        // The Express app is used instead of the HTTP server
+        expressApp: httpApp,
+        path: "/sse"
+      };
+      console.log(`✅ SSE transport enabled at http://localhost:${options.port}/sse`);
+    } else {
+      // Use STDIO transport
+      serverConfig.transport = {
+        type: "stdio"
+      };
+      console.log(`✅ STDIO transport enabled`);
+      
+      // Still start HTTP server if web UI is enabled
+      if (options.webUi) {
+        // Don't await this to avoid blocking
+        startServer(options.port);
+      }
+    }
+    
+    const server = new MCPServer(serverConfig);
+    
     await server.start();
     console.log("✅ MCP server started successfully with 9 debugging principles!");
-    
-    // Start HTTP server if web UI is enabled
-    if (options.webUi) {
-      // Set PORT environment variable for http-server.js to use
-      process.env.PORT = options.port.toString();
-      
-      httpApp.listen(options.port, () => {
-        console.log(`✅ HTTP server running on port ${options.port}`);
-        console.log(`🔍 Web UI available at http://localhost:${options.port}`);
-        console.log("Ready to accept pytest failures!");
-      });
-    }
+    console.log("Ready to accept pytest failures!");
   } catch (error) {
     console.error("Error starting server:", error);
     process.exit(1);
