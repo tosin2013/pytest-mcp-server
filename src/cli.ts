@@ -3,6 +3,9 @@
  * Command line interface for pytest-mcp-server
  */
 
+// Add type declarations for Node.js built-in modules
+/// <reference types="node" />
+
 import { MCPServer } from "mcp-framework";
 import express from 'express';
 import fs from 'fs';
@@ -95,6 +98,9 @@ async function startMcpServer() {
       version: packageVersion,
       capabilities: {
         tools: {}  // Changed from 'true' to empty object as required by MCP-Framework
+      },
+      traces: {
+        enabled: true  // Enable traces for better compatibility with Claude Desktop
       }
     };
     
@@ -199,42 +205,49 @@ async function startMcpServer() {
     const failureAnalyticsTool = new FailureAnalyticsTool();
     const failurePromptGeneratorTool = new FailurePromptGeneratorTool();
 
-    // Instead of post-initialization registration, include the tools in the initial configuration
+    // Configure tools with proper MCP capability format for Claude Desktop compatibility
     serverConfig.capabilities.tools = {
       [pytestFailureTool.name]: {
         description: pytestFailureTool.description,
         handler: pytestFailureTool.execute.bind(pytestFailureTool),
-        schema: pytestFailureTool.schema
+        schema: pytestFailureTool.schema,
+        enabledByDefault: true  // Ensure tool is enabled by default
       },
       [debugWithPrincipleTool.name]: {
         description: debugWithPrincipleTool.description,
         handler: debugWithPrincipleTool.execute.bind(debugWithPrincipleTool),
-        schema: debugWithPrincipleTool.schema
+        schema: debugWithPrincipleTool.schema,
+        enabledByDefault: true
       },
       [getFailureInfoTool.name]: {
         description: getFailureInfoTool.description,
         handler: getFailureInfoTool.execute.bind(getFailureInfoTool),
-        schema: getFailureInfoTool.schema
+        schema: getFailureInfoTool.schema,
+        enabledByDefault: true
       },
       [listFailuresTool.name]: {
         description: listFailuresTool.description,
         handler: listFailuresTool.execute.bind(listFailuresTool),
-        schema: listFailuresTool.schema
+        schema: listFailuresTool.schema,
+        enabledByDefault: true
       },
       [pytestDocsGuideTool.name]: {
         description: pytestDocsGuideTool.description,
         handler: pytestDocsGuideTool.execute.bind(pytestDocsGuideTool),
-        schema: pytestDocsGuideTool.schema
+        schema: pytestDocsGuideTool.schema,
+        enabledByDefault: true
       },
       [failureAnalyticsTool.name]: {
         description: failureAnalyticsTool.description,
         handler: failureAnalyticsTool.execute.bind(failureAnalyticsTool),
-        schema: failureAnalyticsTool.schema
+        schema: failureAnalyticsTool.schema,
+        enabledByDefault: true
       },
       [failurePromptGeneratorTool.name]: {
         description: failurePromptGeneratorTool.description,
         handler: failurePromptGeneratorTool.execute.bind(failurePromptGeneratorTool),
-        schema: failurePromptGeneratorTool.schema
+        schema: failurePromptGeneratorTool.schema,
+        enabledByDefault: true
       }
     };
 
@@ -245,6 +258,24 @@ async function startMcpServer() {
     if (!options.silent) {
       console.error("✅ MCP server started successfully with 9 debugging principles!");
       console.error("Ready to accept pytest failures!");
+      
+      // Log available tools for debugging
+      console.error("\nAvailable tools:");
+      const toolNames = Object.keys(serverConfig.capabilities.tools);
+      toolNames.forEach(toolName => {
+        console.error(`- ${toolName}: ${serverConfig.capabilities.tools[toolName].description}`);
+      });
+      
+      // Log connection information for Claude Desktop
+      console.error("\n== Configuration for Claude Desktop ==");
+      console.error(`MCP Server Name: ${serverConfig.name}`);
+      console.error(`Transport Type: ${serverConfig.transport.type}`);
+      if (serverConfig.transport.type === "http-stream") {
+        console.error(`MCP URL: http://localhost:${options.mcpPort}/mcp`);
+      } else if (serverConfig.transport.type === "sse") {
+        console.error(`MCP URL: http://localhost:${options.port}/sse`);
+      }
+      console.error("=====================================");
     }
   } catch (error) {
     console.error("Error starting server:", error);
