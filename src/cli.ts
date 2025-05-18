@@ -14,14 +14,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
 
-// Import our tool modules to ensure they're registered
-import "./tools/PytestFailureTool.js";
-import "./tools/DebugWithPrincipleTool.js";
-import "./tools/GetFailureInfoTool.js";
-import "./tools/ListFailuresTool.js";
-import "./tools/PytestDocsGuideTool.js";
-import "./tools/FailureAnalyticsTool.js";
-import "./tools/FailurePromptGeneratorTool.js";
+// Import tool classes
+import PytestFailureTool from './tools/PytestFailureTool.js';
+import DebugWithPrincipleTool from './tools/DebugWithPrincipleTool.js';
+import GetFailureInfoTool from './tools/GetFailureInfoTool.js';
+import ListFailuresTool from './tools/ListFailuresTool.js';
+import PytestDocsGuideTool from './tools/PytestDocsGuideTool.js';
+import FailureAnalyticsTool from './tools/FailureAnalyticsTool.js';
+import FailurePromptGeneratorTool from './tools/FailurePromptGeneratorTool.js';
 
 // Import HTTP server app
 import httpApp, { startServer } from "./http-server.js";
@@ -94,7 +94,7 @@ async function startMcpServer() {
       name: "pytest-mcp-server",
       version: packageVersion,
       capabilities: {
-        tools: true  // Explicitly enable tools capability
+        tools: {}  // Changed from 'true' to empty object as required by MCP-Framework
       }
     };
     
@@ -190,6 +190,55 @@ async function startMcpServer() {
       }
     }
     
+    // Create instances of each tool
+    const pytestFailureTool = new PytestFailureTool();
+    const debugWithPrincipleTool = new DebugWithPrincipleTool();
+    const getFailureInfoTool = new GetFailureInfoTool();
+    const listFailuresTool = new ListFailuresTool();
+    const pytestDocsGuideTool = new PytestDocsGuideTool();
+    const failureAnalyticsTool = new FailureAnalyticsTool();
+    const failurePromptGeneratorTool = new FailurePromptGeneratorTool();
+
+    // Instead of post-initialization registration, include the tools in the initial configuration
+    serverConfig.capabilities.tools = {
+      [pytestFailureTool.name]: {
+        description: pytestFailureTool.description,
+        handler: pytestFailureTool.execute.bind(pytestFailureTool),
+        schema: pytestFailureTool.schema
+      },
+      [debugWithPrincipleTool.name]: {
+        description: debugWithPrincipleTool.description,
+        handler: debugWithPrincipleTool.execute.bind(debugWithPrincipleTool),
+        schema: debugWithPrincipleTool.schema
+      },
+      [getFailureInfoTool.name]: {
+        description: getFailureInfoTool.description,
+        handler: getFailureInfoTool.execute.bind(getFailureInfoTool),
+        schema: getFailureInfoTool.schema
+      },
+      [listFailuresTool.name]: {
+        description: listFailuresTool.description,
+        handler: listFailuresTool.execute.bind(listFailuresTool),
+        schema: listFailuresTool.schema
+      },
+      [pytestDocsGuideTool.name]: {
+        description: pytestDocsGuideTool.description,
+        handler: pytestDocsGuideTool.execute.bind(pytestDocsGuideTool),
+        schema: pytestDocsGuideTool.schema
+      },
+      [failureAnalyticsTool.name]: {
+        description: failureAnalyticsTool.description,
+        handler: failureAnalyticsTool.execute.bind(failureAnalyticsTool),
+        schema: failureAnalyticsTool.schema
+      },
+      [failurePromptGeneratorTool.name]: {
+        description: failurePromptGeneratorTool.description,
+        handler: failurePromptGeneratorTool.execute.bind(failurePromptGeneratorTool),
+        schema: failurePromptGeneratorTool.schema
+      }
+    };
+
+    // Create the server with all tools configured
     const server = new MCPServer(serverConfig);
     
     await server.start();
