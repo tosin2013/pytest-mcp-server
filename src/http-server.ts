@@ -49,7 +49,7 @@ process.env.DATA_DIR = DATA_DIR;
 
 // Stream endpoint implementations
 // Helper function to handle streaming responses
-function handleStreamResponse(req: Request, res: Response) {
+function handleStreamResponse(req: Request, res: Response, silent: boolean = false) {
   // Set headers for streaming response
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Transfer-Encoding', 'chunked');
@@ -58,6 +58,10 @@ function handleStreamResponse(req: Request, res: Response) {
   
   // Create a session ID for this connection
   const sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2);
+  
+  if (!silent) {
+    console.error(`HTTP Stream connection established: ${sessionId}`);
+  }
   
   // Send initial response to confirm connection
   const initialMessage = JSON.stringify({
@@ -97,14 +101,15 @@ function handleStreamResponse(req: Request, res: Response) {
   // Handle client disconnect
   req.on('close', () => {
     clearInterval(keepAliveInterval);
-    console.log(`HTTP Stream client disconnected: ${sessionId}`);
+    if (!silent) {
+      console.error(`HTTP Stream client disconnected: ${sessionId}`);
+    }
   });
 }
 
 // Add an HTTP Stream endpoint
 app.get('/stream', (req: Request, res: Response) => {
-  console.log('New HTTP Stream connection established');
-  handleStreamResponse(req, res);
+  handleStreamResponse(req, res, false);
 });
 
 // Routes
@@ -212,7 +217,7 @@ app.post('/api/debug', async (req: Request, res: Response) => {
 // Serve static files from web UI build directory if it exists
 const WEB_UI_BUILD_DIR = path.join(PACKAGE_ROOT, 'web-ui/build');
 if (fs.existsSync(WEB_UI_BUILD_DIR)) {
-  console.log(`Serving web UI from ${WEB_UI_BUILD_DIR}`);
+  console.error(`Serving web UI from ${WEB_UI_BUILD_DIR}`);
   app.use(express.static(WEB_UI_BUILD_DIR));
   
   // For any routes that don't match the API, serve the index.html
@@ -226,27 +231,29 @@ if (fs.existsSync(WEB_UI_BUILD_DIR)) {
     res.sendFile(path.join(WEB_UI_BUILD_DIR, 'index.html'));
   });
 } else {
-  console.log(`Web UI build directory not found at ${WEB_UI_BUILD_DIR}`);
-  console.log('Run "cd web-ui && npm run build" to create the web UI build');
+  console.error(`Web UI build directory not found at ${WEB_UI_BUILD_DIR}`);
+  console.error('Run "cd web-ui && npm run build" to create the web UI build');
 }
 
 // Start server
-// Remove the auto-starting app.listen() call and replace with a function
-export function startServer(port = PORT) {
+// Updated to accept silent parameter
+export function startServer(port = PORT, silent: boolean = false) {
   return app.listen(port, () => {
-    console.log(`HTTP server running on port ${port}`);
-    console.log(`API endpoints:`);
-    console.log(`  GET  /health - Health check`);
-    console.log(`  GET  /api/docs - Get documentation about using the server`);
-    console.log(`  GET  /api/failures - List all failures`);
-    console.log(`  POST /api/failures - Register a new failure`);
-    console.log(`  GET  /api/failures/:id - Get failure info`);
-    console.log(`  POST /api/debug - Apply debugging principle`);
-    console.log(`  GET  /api/analytics - Analyze and group failures`);
-    console.log(`  GET  /api/prompt - Generate debugging prompts for failures`);
-    console.log(`  GET  /stream - HTTP Stream transport endpoint (if enabled)`);
-    console.log(`  GET  /sse - SSE transport endpoint (if enabled)`);
-    console.log(`Web UI available at http://localhost:${port}`);
+    if (!silent) {
+      console.error(`HTTP server running on port ${port}`);
+      console.error(`API endpoints:`);
+      console.error(`  GET  /health - Health check`);
+      console.error(`  GET  /api/docs - Get documentation about using the server`);
+      console.error(`  GET  /api/failures - List all failures`);
+      console.error(`  POST /api/failures - Register a new failure`);
+      console.error(`  GET  /api/failures/:id - Get failure info`);
+      console.error(`  POST /api/debug - Apply debugging principle`);
+      console.error(`  GET  /api/analytics - Analyze and group failures`);
+      console.error(`  GET  /api/prompt - Generate debugging prompts for failures`);
+      console.error(`  GET  /stream - HTTP Stream transport endpoint (if enabled)`);
+      console.error(`  GET  /sse - SSE transport endpoint (if enabled)`);
+      console.error(`Web UI available at http://localhost:${port}`);
+    }
   });
 }
 

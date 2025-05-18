@@ -35,7 +35,8 @@ const options = {
   port: parseInt(process.env.PORT || "3000", 10),
   dataDir: process.env.DATA_DIR || path.join(process.cwd(), "data"),
   webUi: true,
-  transport: process.env.TRANSPORT || "stdio" // Default transport type
+  transport: process.env.TRANSPORT || "stdio", // Default transport type
+  silent: process.env.SILENT === "true" || false
 };
 
 // Parse options
@@ -49,6 +50,8 @@ for (let i = 1; i < args.length; i++) {
     options.webUi = false;
   } else if (arg === "--transport") {
     options.transport = args[++i];
+  } else if (arg === "--silent") {
+    options.silent = true;
   }
 }
 
@@ -59,7 +62,9 @@ if (!fs.existsSync(options.dataDir)) {
 
 // Set data directory as environment variable for tools to use
 process.env.DATA_DIR = options.dataDir;
-console.log(`✅ Using data directory: ${process.env.DATA_DIR}`);
+if (!options.silent) {
+  console.error(`✅ Using data directory: ${process.env.DATA_DIR}`);
+}
 
 // Read package.json for version information
 const packageJsonPath = path.join(PACKAGE_ROOT, 'package.json');
@@ -69,11 +74,13 @@ try {
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   packageVersion = packageJson.version || packageVersion;
 } catch (error: any) {
-  console.warn(`Warning: Could not read package.json for version info: ${error.message}`);
+  console.error(`Warning: Could not read package.json for version info: ${error.message}`);
 }
 
 async function startMcpServer() {
-  console.log("Starting Pytest MCP Server...");
+  if (!options.silent) {
+    console.error("Starting Pytest MCP Server...");
+  }
   
   try {
     // Set PORT environment variable
@@ -83,13 +90,16 @@ async function startMcpServer() {
     const serverConfig: any = {
       name: "pytest-mcp-server",
       version: packageVersion,
+      capabilities: {
+        tools: true  // Explicitly enable tools capability
+      }
     };
     
     // Configure transport based on options and HTTP server
     if (options.transport === "sse") {
       // Start HTTP server for SSE transport
       // We're not awaiting httpApp.listen to avoid blocking
-      startServer(options.port);
+      startServer(options.port, options.silent);
       
       // Configure SSE transport
       serverConfig.transport = {
@@ -98,15 +108,18 @@ async function startMcpServer() {
         expressApp: httpApp,
         path: "/sse"
       };
-      console.log(`✅ SSE transport enabled at http://localhost:${options.port}/sse`);
+      if (!options.silent) {
+        console.error(`✅ SSE transport enabled at http://localhost:${options.port}/sse`);
+      }
     } else if (options.transport === "http-stream") {
       // Start HTTP server for HTTP Stream transport
-      startServer(options.port);
+      startServer(options.port, options.silent);
       
       // Configure HTTP Stream transport
       serverConfig.transport = {
         type: "http-stream",
-        expressApp: httpApp,
+        // For Claude Desktop, let MCP create its own server rather than using expressApp
+        port: options.port + 1, // Use a different port for the MCP HTTP Stream server
         endpoint: "/stream",
         cors: {
           allowOrigin: "*",
@@ -117,26 +130,33 @@ async function startMcpServer() {
         },
         maxMessageSize: "4mb"
       };
-      console.log(`✅ HTTP Stream transport enabled at http://localhost:${options.port}/stream`);
+      if (!options.silent) {
+        console.error(`✅ HTTP Stream transport enabled at http://localhost:${options.port}/stream (Express)`);
+        console.error(`✅ HTTP Stream transport also available at http://localhost:${options.port + 1}/stream (MCP)`);
+      }
     } else {
       // Use STDIO transport
       serverConfig.transport = {
         type: "stdio"
       };
-      console.log(`✅ STDIO transport enabled`);
+      if (!options.silent) {
+        console.error(`✅ STDIO transport enabled`);
+      }
       
       // Still start HTTP server if web UI is enabled
       if (options.webUi) {
         // Don't await this to avoid blocking
-        startServer(options.port);
+        startServer(options.port, options.silent);
       }
     }
     
     const server = new MCPServer(serverConfig);
     
     await server.start();
-    console.log("✅ MCP server started successfully with 9 debugging principles!");
-    console.log("Ready to accept pytest failures!");
+    if (!options.silent) {
+      console.error("✅ MCP server started successfully with 9 debugging principles!");
+      console.error("Ready to accept pytest failures!");
+    }
   } catch (error) {
     console.error("Error starting server:", error);
     process.exit(1);
@@ -160,11 +180,13 @@ Options:
   --data-dir, -d <dir>  Set data directory (default: ./data)
   --no-web-ui           Disable web UI (MCP server only)
   --transport <type>    Set transport type (stdio, sse, http-stream) (default: stdio)
+  --silent              Run in silent mode (minimal console output)
 
 Examples:
   pytest-mcp-server start --port 8080
   pytest-mcp-server --data-dir /path/to/data
   pytest-mcp-server start --transport http-stream
+  pytest-mcp-server start --transport http-stream --silent
   `);
 }
 
