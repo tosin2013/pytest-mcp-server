@@ -69,14 +69,14 @@ npm run build
 # Start the server with default settings
 pytest-mcp-server start
 
-# Use a different port
-pytest-mcp-server start --port 8080
+# Use different ports for web UI and MCP transport
+pytest-mcp-server start --port 8080 --mcp-port 8081
 
 # Specify a custom data directory
-pytest-mcp-server start --data-dir ./my-data
+pytest-mcp-server start --data-dir ./my-data --transport http-stream
 
 # Or use environment variables
-DATA_DIR=/path/to/data PORT=8080 pytest-mcp-server start
+DATA_DIR=/path/to/data PORT=8080 MCP_PORT=8081 pytest-mcp-server start --transport http-stream
 ```
 
 ### When installed from source
@@ -86,14 +86,14 @@ DATA_DIR=/path/to/data PORT=8080 pytest-mcp-server start
 npm start
 
 # Start with environment variables
-DATA_DIR=/path/to/data PORT=8080 npm start
+DATA_DIR=/path/to/data PORT=8080 MCP_PORT=8081 npm start
 
 # Build and start the HTTP server with web UI
 npm run build:all
 npm run start-http
 ```
 
-The web UI will be available at http://localhost:3000
+The web UI will be available at http://localhost:3000 by default, and the MCP API will run on port 3001 by default.
 
 ## Environment Variables and Configuration
 
@@ -107,8 +107,21 @@ This will display all environment variables used by the server and their current
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | HTTP server port | `3000` |
+| `PORT` | HTTP server port for web UI | `3000` |
+| `MCP_PORT` | Port for MCP transport server | `3001` |
 | `DATA_DIR` | Directory for storing failure data | `./data` in current directory |
+
+### Port Configuration
+
+The server uses two separate ports:
+
+1. **Web UI Port** (`PORT` environment variable, `--port` flag): Used for the web interface and HTTP API endpoints. Default: 3000
+2. **MCP Transport Port** (`MCP_PORT` environment variable, `--mcp-port` flag): Used for MCP protocol connections. Default: 3001
+
+This separation ensures there are no port conflicts between the two servers. When configuring clients, make sure to use the correct port:
+
+- For web UI and REST API access: Use the Web UI port (e.g., `http://localhost:3000`)
+- For MCP protocol connections: Use the MCP Transport port (e.g., `http://localhost:3001/mcp`)
 
 ### Data Directory Permissions
 
@@ -218,8 +231,11 @@ To use the server with Claude Desktop, add the following to your Claude Desktop 
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "pytest-mcp-server",
+      "args": ["start", "--transport", "http-stream"],
       "env": {
-        "DATA_DIR": "/path/to/your/data/directory"
+        "DATA_DIR": "/path/to/your/data/directory",
+        "PORT": "3000",
+        "MCP_PORT": "3001"
       }
     }
   }
@@ -233,9 +249,11 @@ To use the server with Claude Desktop, add the following to your Claude Desktop 
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "npx",
-      "args": ["pytest-mcp-server"],
+      "args": ["pytest-mcp-server", "start", "--transport", "http-stream"],
       "env": {
-        "DATA_DIR": "/path/to/your/data/directory"
+        "DATA_DIR": "/path/to/your/data/directory",
+        "PORT": "3000",
+        "MCP_PORT": "3001"
       }
     }
   }
@@ -253,8 +271,11 @@ You can customize the server configuration in several ways:
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "pytest-mcp-server",
+      "args": ["start", "--transport", "http-stream"],
       "env": {
-        "DATA_DIR": "/path/to/your/data/directory"
+        "DATA_DIR": "/path/to/your/data/directory",
+        "PORT": "3000",
+        "MCP_PORT": "3001"
       }
     }
   }
@@ -268,7 +289,7 @@ You can customize the server configuration in several ways:
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "pytest-mcp-server",
-      "args": ["start", "--data-dir", "/path/to/your/data"]
+      "args": ["start", "--data-dir", "/path/to/your/data", "--port", "3000", "--mcp-port", "3001", "--transport", "http-stream"]
     }
   }
 }
@@ -281,7 +302,7 @@ You can customize the server configuration in several ways:
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "node",
-      "args": ["/absolute/path/to/pytest-mcp-server/dist/cli.js", "start"],
+      "args": ["/absolute/path/to/pytest-mcp-server/dist/cli.js", "start", "--port", "3000", "--mcp-port", "3001", "--transport", "http-stream"],
       "env": {
         "DATA_DIR": "/path/to/your/data"
       }
@@ -299,16 +320,16 @@ To use with an IDE or Editor, add this to your configuration:
   "mcpServers": {
     "pytest-mcp-server": {
       "command": "npx",
-      "args": ["-y", "pytest-mcp-server"],
+      "args": ["-y", "pytest-mcp-server", "start", "--transport", "http-stream"],
       "env": {
-        "DATA_DIR": "/path/to/your/data"
+        "DATA_DIR": "/path/to/your/data",
+        "PORT": "3000",
+        "MCP_PORT": "3001"
       }
     }
   }
 }
 ```
-
-
 
 ## Pytest Integration
 
@@ -379,8 +400,8 @@ def pytest_runtest_makereport(item, call):
         
         # Send to MCP server - try both the HTTP API and MCP protocol
         endpoints = [
-            "http://localhost:3000/api/failures",  # HTTP API endpoint
-            "http://localhost:3000/mcp/failures"   # MCP protocol endpoint (if configured)
+            "http://localhost:3000/api/failures",  # HTTP API endpoint (Web UI port)
+            "http://localhost:3001/mcp/failures"   # MCP protocol endpoint (MCP transport port)
         ]
         
         success = False
@@ -420,6 +441,25 @@ Once you have failures registered with the MCP server, you can use Claude to deb
    - "Apply the 'Divide and Conquer' debugging principle to my latest test failure."
    - "Analyze my test failures and identify common patterns."
    - "Generate a detailed debug prompt for my TypeError failures."
+
+## Using the MCP Inspector
+
+The MCP Inspector is a tool for inspecting MCP server connections and interactions:
+
+```bash
+# Install the MCP Inspector
+npm install -g @modelcontextprotocol/inspector
+
+# Connect to the MCP server (use the MCP_PORT, not the web UI port)
+npx @modelcontextprotocol/inspector inspect http://localhost:3001/mcp
+```
+
+You can also specify different ports for the Inspector UI:
+
+```bash
+# Custom ports for the Inspector
+npx @modelcontextprotocol/inspector inspect http://localhost:3001/mcp --port 4000 --ui-port 5000
+```
 
 ## Web UI Features
 
@@ -641,7 +681,7 @@ export default YourTool;
 
 ## HTTP API Endpoints
 
-The server provides a RESTful HTTP API for programmatic access:
+The server provides a RESTful HTTP API for programmatic access on the Web UI port (default: 3000):
 
 - **GET /api/failures** - List all registered failures
 - **POST /api/failures** - Register a new test failure
@@ -651,7 +691,9 @@ The server provides a RESTful HTTP API for programmatic access:
 - **GET /api/prompts/:id** - Generate a debugging prompt for a failure or group
 - **GET /api/docs** - Get documentation about using the server
 
-For full API documentation, see the [API Documentation](http://localhost:3000/docs).
+For MCP protocol connections, use the MCP Transport port (default: 3001) with the /mcp endpoint.
+
+For full API documentation, visit the web UI at [http://localhost:3000/docs](#) (replace with your configured port).
 
 ## License
 
