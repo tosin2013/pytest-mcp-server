@@ -99,6 +99,25 @@ async function startMcpServer() {
         path: "/sse"
       };
       console.log(`✅ SSE transport enabled at http://localhost:${options.port}/sse`);
+    } else if (options.transport === "http-stream") {
+      // Start HTTP server for HTTP Stream transport
+      startServer(options.port);
+      
+      // Configure HTTP Stream transport
+      serverConfig.transport = {
+        type: "http-stream",
+        expressApp: httpApp,
+        endpoint: "/stream",
+        cors: {
+          allowOrigin: "*",
+          allowMethods: "GET, POST, OPTIONS",
+          allowHeaders: "Content-Type, Authorization, x-api-key",
+          exposeHeaders: "Content-Type, Authorization, x-api-key",
+          maxAge: "86400"
+        },
+        maxMessageSize: "4mb"
+      };
+      console.log(`✅ HTTP Stream transport enabled at http://localhost:${options.port}/stream`);
     } else {
       // Use STDIO transport
       serverConfig.transport = {
@@ -140,10 +159,12 @@ Options:
   --port, -p <port>     Set HTTP server port (default: 3000)
   --data-dir, -d <dir>  Set data directory (default: ./data)
   --no-web-ui           Disable web UI (MCP server only)
+  --transport <type>    Set transport type (stdio, sse, http-stream) (default: stdio)
 
 Examples:
   pytest-mcp-server start --port 8080
   pytest-mcp-server --data-dir /path/to/data
+  pytest-mcp-server start --transport http-stream
   `);
 }
 
