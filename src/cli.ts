@@ -33,6 +33,7 @@ const command = args[0] || "help";
 // Default options
 const options = {
   port: parseInt(process.env.PORT || "3000", 10),
+  mcpPort: parseInt(process.env.MCP_PORT || "3001", 10), // Added separate MCP port default
   dataDir: process.env.DATA_DIR || path.join(process.cwd(), "data"),
   webUi: true,
   transport: process.env.TRANSPORT || "stdio", // Default transport type
@@ -44,6 +45,8 @@ for (let i = 1; i < args.length; i++) {
   const arg = args[i];
   if (arg === "--port" || arg === "-p") {
     options.port = parseInt(args[++i], 10);
+  } else if (arg === "--mcp-port") {    // Added CLI option for MCP port
+    options.mcpPort = parseInt(args[++i], 10);
   } else if (arg === "--data-dir" || arg === "-d") {
     options.dataDir = path.resolve(args[++i]);
   } else if (arg === "--no-web-ui") {
@@ -83,7 +86,7 @@ async function startMcpServer() {
   }
   
   try {
-    // Set PORT environment variable
+    // Set PORT environment variable for Express web server
     process.env.PORT = options.port.toString();
     
     // Start MCP server with explicit name, version and transport configuration
@@ -99,7 +102,7 @@ async function startMcpServer() {
     if (options.transport === "sse") {
       // Start HTTP server for SSE transport
       // We're not awaiting httpApp.listen to avoid blocking
-      startServer(options.port, options.silent);
+      const actualPort = await startServer(options.port, options.silent);
       
       // Configure SSE transport
       serverConfig.transport = {
@@ -109,30 +112,65 @@ async function startMcpServer() {
         path: "/sse"
       };
       if (!options.silent) {
-        console.error(`✅ SSE transport enabled at http://localhost:${options.port}/sse`);
+        console.error(`✅ SSE transport enabled at http://localhost:${actualPort}/sse`);
       }
     } else if (options.transport === "http-stream") {
-      // Start HTTP server for HTTP Stream transport
-      startServer(options.port, options.silent);
+      // Start HTTP server for the web UI - using dynamic port allocation
+      const actualWebUiPort = await startServer(options.port, options.silent);
       
-      // Configure HTTP Stream transport
+      // Configure HTTP Stream transport with different port
+      // Use the mcpPort option specifically for the MCP server, different from the Express UI port
       serverConfig.transport = {
         type: "http-stream",
-        // For Claude Desktop, let MCP create its own server rather than using expressApp
-        port: options.port + 1, // Use a different port for the MCP HTTP Stream server
-        endpoint: "/stream",
-        cors: {
-          allowOrigin: "*",
-          allowMethods: "GET, POST, OPTIONS",
-          allowHeaders: "Content-Type, Authorization, x-api-key",
-          exposeHeaders: "Content-Type, Authorization, x-api-key",
-          maxAge: "86400"
-        },
-        maxMessageSize: "4mb"
+        options: {
+          port: options.mcpPort,   // Use separate dedicated port for MCP transport
+          endpoint: "/mcp", 
+          hostname: "0.0.0.0", 
+          cors: {
+            allowOrigin: "*",
+            allowMethods: "GET, POST, DELETE, OPTIONS",
+            allowHeaders: "Content-Type, Accept, Authorization, x-api-key, Mcp-Session-Id, Last-Event-ID",
+            exposeHeaders: "Content-Type, Authorization, x-api-key, Mcp-Session-Id",
+            maxAge: "86400"
+          },
+          maxMessageSize: "4mb",
+          enableWebSocket: true,
+          connectionTimeout: 300000,
+          keepAliveInterval: 5000,
+          session: {
+            enabled: true,
+            headerName: "Mcp-Session-Id",
+            allowClientTermination: true,
+            terminationGracePeriod: 10000
+          },
+          resumability: {
+            enabled: true,
+            historyDuration: 600000
+          }
+        }
       };
+      
+      // Log the actual configuration for debugging
       if (!options.silent) {
-        console.error(`✅ HTTP Stream transport enabled at http://localhost:${options.port}/stream (Express)`);
-        console.error(`✅ HTTP Stream transport also available at http://localhost:${options.port + 1}/stream (MCP)`);
+        console.error("MCP Server Configuration:", JSON.stringify(serverConfig, null, 2));
+      }
+      
+      // Store the ports in environment variables for use by other components
+      process.env.HTTP_PORT = actualWebUiPort.toString();
+      process.env.MCP_PORT = options.mcpPort.toString();
+      
+      if (!options.silent) {
+        console.error(`✅ HTTP Stream transport enabled at http://localhost:${options.mcpPort}/mcp (MCP Server)`);
+        console.error(`✅ Express web server running on port ${actualWebUiPort}`);
+        
+        // User guidance with clear formatting
+        console.error(`===============================================================`);
+        console.error(`IMPORTANT CONNECTION INFORMATION:`);
+        console.error(`✓ Web UI port: ${actualWebUiPort}`);
+        console.error(`✓ MCP server port: ${options.mcpPort}`);
+        console.error(`✓ Use the /mcp endpoint for all MCP connections (not /stream)`);
+        console.error(`✓ Connection URL: http://localhost:${options.mcpPort}/mcp`);
+        console.error(`===============================================================`);
       }
     } else {
       // Use STDIO transport
@@ -146,7 +184,9 @@ async function startMcpServer() {
       // Still start HTTP server if web UI is enabled
       if (options.webUi) {
         // Don't await this to avoid blocking
-        startServer(options.port, options.silent);
+        const actualPort = await startServer(options.port, options.silent);
+        // Store the port in an environment variable
+        process.env.HTTP_PORT = actualPort.toString();
       }
     }
     
@@ -176,14 +216,15 @@ Commands:
   help        Show this help message
 
 Options:
-  --port, -p <port>     Set HTTP server port (default: 3000)
+  --port, -p <port>     Set HTTP server port for web UI (default: 3000)
+  --mcp-port <port>     Set MCP transport server port (default: 3001)
   --data-dir, -d <dir>  Set data directory (default: ./data)
   --no-web-ui           Disable web UI (MCP server only)
   --transport <type>    Set transport type (stdio, sse, http-stream) (default: stdio)
   --silent              Run in silent mode (minimal console output)
 
 Examples:
-  pytest-mcp-server start --port 8080
+  pytest-mcp-server start --port 8080 --mcp-port 8081
   pytest-mcp-server --data-dir /path/to/data
   pytest-mcp-server start --transport http-stream
   pytest-mcp-server start --transport http-stream --silent
@@ -195,6 +236,7 @@ function showEnvInfo() {
 === Environment Configuration ===
 DATA_DIR: ${process.env.DATA_DIR}
 PORT: ${process.env.PORT || '3000 (default)'}
+MCP_PORT: ${process.env.MCP_PORT || '3001 (default)'}
 Current Working Directory: ${process.cwd()}
   `);
 }
