@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "pytest-mcp-server": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/root/pytest-mcp-server/dist/index.js",
+        "--stdio"
+      ],
+      "env": {
+        "DEBUG": "*",
+        "DATA_DIR": "/root/pytest-mcp-server/data"
+      }
+    }
+  }
+}

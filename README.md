@@ -93,6 +93,65 @@ npm run build:all
 npm run start-http
 ```
 
+### MCP Configuration
+
+To use this server with MCP clients, create an `mcp.json` file with the following configuration:
+
+```json
+{
+  "servers": {
+    "pytest-mcp-server": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/path/to/pytest-mcp-server/dist/index.js",
+        "--stdio"
+      ],
+      "env": {
+        "DEBUG": "*",
+        "DATA_DIR": "/path/to/pytest-mcp-server/data"
+      }
+    }
+  }
+}
+```
+
+Replace `/path/to/pytest-mcp-server` with the absolute path to your installation directory.
+
+### MCP Startup Prompt
+
+When using this MCP server with an AI assistant, the following prompt can help the assistant understand the server's capabilities:
+
+```
+You now have access to the Pytest MCP Server, which helps debug pytest test failures using the 9 principles of debugging by David Agans.
+
+Available tools:
+1. list_failures - List all registered pytest failures
+2. get_failure_info - Get detailed information about a specific failure
+3. debug_with_principle - Apply a debugging principle to a failure
+4. analyze_failures - Analyze and group similar failures
+5. generate_debug_prompt - Generate a targeted debugging prompt
+6. get_pytest_docs - Get pytest documentation and guides
+
+To debug a test failure effectively:
+1. First use list_failures to see available test failures
+2. Get details with get_failure_info
+3. Apply debugging principles in sequence with debug_with_principle
+4. Use analyze_failures to identify patterns in related failures
+5. Generate targeted prompts with generate_debug_prompt
+
+The server implements David Agans' 9 debugging principles:
+- Understand the System
+- Make It Fail
+- Quit Thinking and Look
+- Divide and Conquer
+- Change One Thing at a Time
+- Keep an Audit Trail
+- Check the Plug
+- Get a Fresh View
+- If You Didn't Fix It, It Ain't Fixed
+```
+
 The web UI will be available at http://localhost:3000 by default, and the MCP API will run on port 3001 by default.
 
 ## Environment Variables and Configuration
