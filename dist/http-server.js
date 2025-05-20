@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import net from 'net';
+import os from 'os';
 // Get the directory where the package is installed
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -460,117 +461,167 @@ else {
     console.error(`Web UI build directory not found at ${WEB_UI_BUILD_DIR}`);
     console.error('Run "cd web-ui && npm run build" to create the web UI build');
 }
-// Start server
-// Updated to accept silent parameter and handle port conflicts
-export function startServer(port = PORT, silent = false) {
-    // Improved port finding with better randomization
-    const findAvailablePort = async (startPort, range = 1000) => {
-        // Ensure numeric port
-        const start = typeof startPort === 'string' ? parseInt(startPort, 10) : startPort;
-        // Function to check if a port is available
-        const isPortAvailable = (port) => {
-            return new Promise((resolve) => {
-                const server = net.createServer();
-                server.once('error', () => {
-                    resolve(false); // Port is in use
-                });
-                server.once('listening', () => {
-                    server.close();
-                    resolve(true); // Port is available
-                });
-                server.listen(port);
+// Start server with improved error handling and network configuration
+export async function startServer(port = PORT, silent = false, host = 'localhost', allowExternal = false) {
+    // Ensure port is numeric
+    const numericPort = typeof port === 'string' ? parseInt(port, 10) : port;
+    // Determine the hostname to bind to
+    const hostname = allowExternal ? '0.0.0.0' : host;
+    // Function to check if a port is available
+    const isPortAvailable = (port) => {
+        return new Promise((resolve) => {
+            const server = net.createServer();
+            server.once('error', () => {
+                resolve(false); // Port is in use
             });
-        };
+            server.once('listening', () => {
+                server.close();
+                resolve(true); // Port is available
+            });
+            server.listen(port, hostname);
+        });
+    };
+    // Function to find an available port
+    const findAvailablePort = async (startPort) => {
         // Try the requested port first
-        if (await isPortAvailable(start)) {
-            return start;
+        if (await isPortAvailable(startPort)) {
+            return startPort;
         }
-        // If not available, try sequential ports within range
+        // Try sequential ports
         for (let i = 1; i < 20; i++) {
-            const testPort = start + i;
+            const testPort = startPort + i;
             if (await isPortAvailable(testPort)) {
                 return testPort;
             }
         }
-        // If still not found, try random ports within the range
-        for (let attempt = 0; attempt < 5; attempt++) {
-            const randomPort = start + Math.floor(Math.random() * range);
+        // Try random ports
+        for (let i = 0; i < 5; i++) {
+            const randomPort = 8000 + Math.floor(Math.random() * 2000);
             if (await isPortAvailable(randomPort)) {
                 return randomPort;
             }
         }
-        // Last resort - try a completely different range
-        const fallbackPort = 8000 + Math.floor(Math.random() * 2000);
-        return fallbackPort;
+        // Last resort - return a random port and hope for the best
+        return 8000 + Math.floor(Math.random() * 2000);
     };
-    // Enhanced tryListen function with better error handling
-    const tryListen = async (retry = 0, maxRetries = 5) => {
-        if (retry > maxRetries) {
-            throw new Error(`Failed to start server after ${maxRetries} retries`);
-        }
+    // Find an available port
+    const availablePort = await findAvailablePort(numericPort);
+    return new Promise((resolve, reject) => {
         try {
-            // Find an available port - ensure numeric port
-            const numericPort = typeof port === 'string' ? parseInt(port, 10) : port;
-            const availablePort = await findAvailablePort(numericPort);
-            return new Promise((resolve, reject) => {
-                const server = app.listen(availablePort)
-                    .on('error', (err) => {
-                    if (err.code === 'EADDRINUSE') {
-                        if (!silent) {
-                            console.error(`Port ${availablePort} is in use, trying another port...`);
+            // Create HTTP server
+            const server = app.listen(availablePort, hostname, () => {
+                const address = server.address();
+                const actualPort = address.port;
+                const actualHost = address.address;
+                if (!silent) {
+                    console.error(`HTTP server running on ${actualHost}:${actualPort}`);
+                    console.error(`API endpoints:`);
+                    console.error(`  GET  /health - Health check`);
+                    console.error(`  GET  /api/docs - Get documentation about using the server`);
+                    console.error(`  GET  /api/failures - List all failures`);
+                    console.error(`  POST /api/failures - Register a new failure`);
+                    console.error(`  GET  /api/failures/:id - Get failure info`);
+                    console.error(`  POST /api/debug - Apply debugging principle`);
+                    console.error(`  GET  /api/analytics - Analyze and group failures`);
+                    console.error(`  GET  /api/prompt - Generate debugging prompts for failures`);
+                    console.error(`  GET  /mcp - STANDARD MCP endpoint for client connections`);
+                    console.error(`  POST /mcp - STANDARD MCP endpoint for client connections`);
+                    console.error(`  GET  /stream - Legacy alias that redirects to /mcp (for backward compatibility)`);
+                    console.error(`  GET  /sse - SSE transport endpoint (if enabled)`);
+                    // Display different URLs based on binding
+                    if (actualHost === '0.0.0.0' || actualHost === '::') {
+                        // If bound to all interfaces, show both localhost and network IP
+                        try {
+                            // Get network interfaces with proper TypeScript types
+                            const networkIfaces = os.networkInterfaces();
+                            const ipAddresses = [];
+                            // Collect all non-internal IPv4 addresses
+                            if (networkIfaces) {
+                                Object.keys(networkIfaces).forEach(ifaceName => {
+                                    const iface = networkIfaces[ifaceName];
+                                    if (iface) {
+                                        iface.forEach((details) => {
+                                            if (details.family === 'IPv4' && !details.internal) {
+                                                ipAddresses.push(details.address);
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                            console.error(`Web UI available at:`);
+                            console.error(`  - http://localhost:${actualPort} (local access)`);
+                            ipAddresses.forEach(ip => {
+                                console.error(`  - http://${ip}:${actualPort} (network access)`);
+                            });
+                            // Print warning about security
+                            console.error(`\n⚠️  WARNING: Server is accessible from other machines on your network`);
+                            console.error(`   To restrict access to this machine only, restart with --host localhost`);
                         }
-                        // Close the server and try again
-                        server.close();
-                        tryListen(retry + 1, maxRetries)
-                            .then(resolve)
-                            .catch(reject);
+                        catch (error) {
+                            // Fallback if network interface lookup fails
+                            console.error(`Web UI available at http://localhost:${actualPort}`);
+                        }
                     }
                     else {
-                        reject(err);
+                        console.error(`Web UI available at http://${actualHost}:${actualPort}`);
                     }
-                })
-                    .on('listening', () => {
-                    const actualPort = server.address().port;
-                    // Store the port in environment variables for other components
-                    process.env.HTTP_PORT = actualPort.toString();
-                    process.env.MCP_PORT = actualPort.toString();
-                    if (!silent) {
-                        console.error(`HTTP server running on port ${actualPort}`);
-                        console.error(`API endpoints:`);
-                        console.error(`  GET  /health - Health check`);
-                        console.error(`  GET  /api/docs - Get documentation about using the server`);
-                        console.error(`  GET  /api/failures - List all failures`);
-                        console.error(`  POST /api/failures - Register a new failure`);
-                        console.error(`  GET  /api/failures/:id - Get failure info`);
-                        console.error(`  POST /api/debug - Apply debugging principle`);
-                        console.error(`  GET  /api/analytics - Analyze and group failures`);
-                        console.error(`  GET  /api/prompt - Generate debugging prompts for failures`);
-                        console.error(`  GET  /mcp - STANDARD MCP endpoint for client connections`);
-                        console.error(`  POST /mcp - STANDARD MCP endpoint for client connections`);
-                        console.error(`  GET  /stream - Legacy alias that redirects to /mcp (for backward compatibility)`);
-                        console.error(`  GET  /sse - SSE transport endpoint (if enabled)`);
-                        console.error(`Web UI available at http://localhost:${actualPort}`);
-                        // Important note to guide users
-                        console.error(`===============================================================`);
-                        console.error(`IMPORTANT CONFIGURATION NOTES:`);
-                        console.error(`✓ MCP Server is using port ${actualPort}`);
-                        console.error(`✓ Always use the /mcp endpoint for MCP connections`);
-                        console.error(`✓ Client connection URL should be: http://localhost:${actualPort}/mcp`);
-                        console.error(`===============================================================`);
-                    }
-                    resolve(actualPort);
-                });
+                    // Important note to guide users
+                    console.error(`===============================================================`);
+                    console.error(`IMPORTANT CONFIGURATION NOTES:`);
+                    console.error(`✓ MCP Server is using port ${actualPort}`);
+                    console.error(`✓ Always use the /mcp endpoint for MCP connections`);
+                    console.error(`✓ Client connection URL should be: http://localhost:${actualPort}/mcp`);
+                    console.error(`===============================================================`);
+                }
+                // Store the port in environment variables for other components
+                process.env.HTTP_PORT = actualPort.toString();
+                resolve(actualPort);
             });
+            // Handle server errors
+            server.on('error', (err) => {
+                if (err.code === 'EADDRINUSE') {
+                    // If port is in use, try another port
+                    if (!silent) {
+                        console.error(`Port ${availablePort} is already in use. Trying another port...`);
+                    }
+                    // Try again with a different port
+                    startServer(availablePort + 1, silent, host, allowExternal)
+                        .then(resolve)
+                        .catch(reject);
+                }
+                else if (err.code === 'EACCES') {
+                    // Permission denied, likely trying to use a privileged port
+                    console.error(`Error: Permission denied to use port ${availablePort}.`);
+                    console.error(`Ports below 1024 require root/admin privileges.`);
+                    // Try a higher port automatically
+                    const newPort = availablePort < 1024 ? 8080 : availablePort + 1000;
+                    console.error(`Trying port ${newPort} instead...`);
+                    startServer(newPort, silent, host, allowExternal)
+                        .then(resolve)
+                        .catch(reject);
+                }
+                else if (err.code === 'EADDRNOTAVAIL') {
+                    // Address not available
+                    console.error(`Error: The address ${host}:${availablePort} is not available.`);
+                    console.error(`This might be because the specified host doesn't exist on this machine.`);
+                    console.error(`Falling back to localhost...`);
+                    // Fall back to localhost
+                    startServer(availablePort, silent, 'localhost', false)
+                        .then(resolve)
+                        .catch(reject);
+                }
+                else {
+                    console.error(`Server error: ${err.message} (${err.code})`);
+                    reject(err);
+                }
+            });
+            // Set timeout for connection handling
+            server.setTimeout(120000); // 2 minutes timeout
         }
         catch (error) {
-            if (!silent) {
-                console.error(`Error finding available port: ${error}`);
-            }
-            // Try again with a different starting port - using numeric value
-            port = 8000 + Math.floor(Math.random() * 2000);
-            return tryListen(retry + 1, maxRetries);
+            console.error(`Failed to start server: ${error.message}`);
+            reject(error);
         }
-    };
-    return tryListen();
+    });
 }
 export default app;

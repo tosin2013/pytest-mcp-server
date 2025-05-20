@@ -40,7 +40,9 @@ const options = {
   dataDir: process.env.DATA_DIR || path.join(process.cwd(), "data"),
   webUi: true,
   transport: process.env.TRANSPORT || "stdio", // Default transport type
-  silent: process.env.SILENT === "true" || false
+  silent: process.env.SILENT === "true" || false,
+  host: process.env.HOST || "localhost", // Allow configuring the host/interface to bind to
+  allowExternalConnections: process.env.ALLOW_EXTERNAL === "true" || false // Allow connections from other machines
 };
 
 // Parse options
@@ -58,6 +60,10 @@ for (let i = 1; i < args.length; i++) {
     options.transport = args[++i];
   } else if (arg === "--silent") {
     options.silent = true;
+  } else if (arg === "--host") {
+    options.host = args[++i];
+  } else if (arg === "--allow-external") {
+    options.allowExternalConnections = true;
   }
 }
 
@@ -122,16 +128,24 @@ async function startMcpServer() {
       }
     } else if (options.transport === "http-stream") {
       // Start HTTP server for the web UI - using dynamic port allocation
-      const actualWebUiPort = await startServer(options.port, options.silent);
+      const actualWebUiPort = await startServer(
+        options.port, 
+        options.silent, 
+        options.host, 
+        options.allowExternalConnections
+      );
       
       // Configure HTTP Stream transport with different port
       // Use the mcpPort option specifically for the MCP server, different from the Express UI port
+      // Determine the hostname to bind to based on options
+      const hostname = options.allowExternalConnections ? "0.0.0.0" : options.host;
+      
       serverConfig.transport = {
         type: "http-stream",
         options: {
           port: options.mcpPort,   // Use separate dedicated port for MCP transport
           endpoint: "/mcp", 
-          hostname: "0.0.0.0", 
+          hostname: hostname, 
           cors: {
             allowOrigin: "*",
             allowMethods: "GET, POST, DELETE, OPTIONS",
