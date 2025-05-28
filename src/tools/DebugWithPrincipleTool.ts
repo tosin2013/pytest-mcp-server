@@ -216,8 +216,8 @@ class DebugWithPrincipleTool extends MCPTool<DebugWithPrincipleInput> {
     // Prepare next principle information
     const nextPrinciple = principleNumber < 9 ? DEBUG_PRINCIPLES[nextPrincipleNumber - 1] : null;
     
-    // Prepare the response data
-    const responseData = {
+    // Return the response data directly - MCP framework will wrap it
+    return {
       message: `Successfully applied debug principle ${principleNumber}: ${principle.name}`,
       current_principle: {
         number: principleNumber,
@@ -230,16 +230,6 @@ class DebugWithPrincipleTool extends MCPTool<DebugWithPrincipleInput> {
         description: nextPrinciple.description
       } : null,
       is_complete: principleNumber >= 9
-    };
-    
-    // Return in MCP-compatible format
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(responseData, null, 2)
-        }
-      ]
     };
   }
 }

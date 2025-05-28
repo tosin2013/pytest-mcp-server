@@ -131,38 +131,22 @@ class PytestFailureTool extends MCPTool {
                     errorMessage = `Failed to save debug session data: ${writeError.message}`;
                 }
             }
-            // Return success or error response
+            // Return success or error response directly - MCP framework will wrap it
             if (success) {
-                const responseData = {
+                return {
                     failureId,
                     sessionId,
                     message: "Failure registered successfully and debug session created",
                     next_step: "Apply debugging principle 1: Understand the System"
                 };
-                return {
-                    content: [
-                        {
-                            type: "text",
-                            text: JSON.stringify(responseData, null, 2)
-                        }
-                    ]
-                };
             }
             else {
-                const responseData = {
+                return {
                     failureId,
                     sessionId,
                     error: true,
                     message: errorMessage || "Failed to register failure due to file system errors",
-                    suggestion: "Check server logs and data directory permissions"
-                };
-                return {
-                    content: [
-                        {
-                            type: "text",
-                            text: JSON.stringify(responseData, null, 2)
-                        }
-                    ]
+                    suggestion: "Check server logs and ensure proper file permissions"
                 };
             }
         }

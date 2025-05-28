@@ -19,6 +19,7 @@ interface FailureRecord {
   error_message: string;
   traceback: string;
   locals?: Record<string, any>;
+  debug_session: string;
 }
 
 interface DebugStep {
@@ -126,24 +127,15 @@ class GetFailureInfoTool extends MCPTool<GetFailureInfoInput> {
 
     // Check if failure exists
     if (!failures[input.failure_id]) {
-      const responseData = {
-        error: `Failure with ID ${input.failure_id} not found`
-      };
-      
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(responseData, null, 2)
-          }
-        ]
+        error: `Failure with ID ${input.failure_id} not found`
       };
     }
     
     const failure = failures[input.failure_id];
     
-    // Return detailed failure information
-    const responseData = {
+    // Return detailed failure information directly - MCP framework will wrap it
+    return {
       id: failure.id,
       timestamp: failure.timestamp,
       status: failure.status,
@@ -153,16 +145,8 @@ class GetFailureInfoTool extends MCPTool<GetFailureInfoInput> {
       line_number: failure.line_number,
       error_message: failure.error_message,
       traceback: failure.traceback,
-      locals: failure.locals || {}
-    };
-    
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(responseData, null, 2)
-        }
-      ]
+      locals: failure.locals,
+      debug_session: failure.debug_session
     };
   }
 }

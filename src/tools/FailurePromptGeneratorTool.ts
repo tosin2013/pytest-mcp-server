@@ -50,58 +50,26 @@ class FailurePromptGeneratorTool extends MCPTool<PromptGeneratorInput> {
   };
 
   async execute(input: PromptGeneratorInput) {
-    const promptStyle = input.prompt_style || 'detailed';
-    
     // Validate input
     if (!input.group_id && !input.failure_id) {
-      const responseData = { 
+      return { 
         error: "Either group_id or failure_id must be provided" 
       };
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(responseData, null, 2)
-          }
-        ]
-      };
     }
+
+    const promptStyle = input.prompt_style || 'comprehensive';
     
     try {
       if (input.group_id) {
         const result = await this.generateGroupPrompt(input.group_id, promptStyle);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
-        };
+        return result;
       } else if (input.failure_id) {
         const result = await this.generateSingleFailurePrompt(input.failure_id, promptStyle);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
-        };
+        return result;
       }
     } catch (error) {
-      const responseData = { 
+      return { 
         error: `Failed to generate debug prompt: ${error}` 
-      };
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(responseData, null, 2)
-          }
-        ]
       };
     }
   }

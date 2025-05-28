@@ -727,74 +727,57 @@ class PytestDocsGuideTool extends MCPTool {
     async execute(input) {
         const topic = input.topic?.toLowerCase() || 'general';
         if (topic === 'all') {
-            // Return a list of all available topics
-            const responseData = {
-                docs: `# Available Documentation Topics
-
-The following documentation topics are available:
-
-${ALL_TOPICS.map(t => `- ${t}: ${this.getTopicDescription(t)}`).join('\n')}
-
-To view a specific topic, call this tool with the topic parameter:
-\`\`\`
-pytest_docs_guide(topic="integration")
-\`\`\``,
+            // Return a list of all available topics directly - MCP framework will wrap it
+            return {
+                docs: `# Available Documentation Topics\n\nThe following documentation topics are available:\n\n${ALL_TOPICS.map(t => `- ${t}: ${this.getTopicDescription(t)}`).join('\n')}\n\nTo view a specific topic, call this tool with the topic parameter:\n\`\`\`\npytest_docs_guide(topic="integration")\n\`\`\``,
                 available_topics: ALL_TOPICS
             };
+        }
+        // Find the best matching topic
+        const matchedTopic = this.findBestMatch(topic);
+        if (!matchedTopic) {
             return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(responseData, null, 2)
-                    }
-                ]
+                error: `Topic '${topic}' not found. Available topics: ${ALL_TOPICS.join(', ')}`,
+                available_topics: ALL_TOPICS
             };
         }
-        // Return docs for the specified topic
-        if (DOCS[topic]) {
-            const responseData = {
-                topic,
-                docs: DOCS[topic],
-                description: this.getTopicDescription(topic)
-            };
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(responseData, null, 2)
-                    }
-                ]
-            };
-        }
-        else {
-            // Topic not found, return available topics
-            const responseData = {
-                error: `Topic '${topic}' not found.`,
-                available_topics: ALL_TOPICS,
-                suggestion: `Try one of these topics: ${ALL_TOPICS.join(', ')}`
-            };
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(responseData, null, 2)
-                    }
-                ]
-            };
-        }
+        // Get documentation for the matched topic
+        const docs = this.getDocumentation(matchedTopic);
+        return {
+            topic: matchedTopic,
+            docs: docs,
+            available_topics: ALL_TOPICS
+        };
     }
     getTopicDescription(topic) {
         const descriptions = {
-            general: "Overview of the pytest-mcp-server and its features",
-            integration: "How to integrate the server with your pytest project",
-            principles: "Detailed explanation of the 9 debugging principles",
-            api: "HTTP API documentation for programmatic integration",
-            client: "Command-line client usage examples",
-            webui: "Web UI features and usage guide",
-            analytics: "Failure analytics and grouping capabilities",
-            prompts: "AI prompt generation for LLM-assisted debugging"
+            'general': 'Basic pytest usage and concepts',
+            'fixtures': 'Test fixtures and dependency injection',
+            'parametrize': 'Parameterized testing',
+            'markers': 'Test markers and custom markers',
+            'plugins': 'Plugin development and usage',
+            'configuration': 'Configuration files and options',
+            'integration': 'Integration testing strategies',
+            'mocking': 'Mocking and patching techniques',
+            'debugging': 'Debugging failed tests',
+            'performance': 'Performance testing and optimization'
         };
-        return descriptions[topic] || "Documentation topic";
+        return descriptions[topic] || 'Documentation topic';
+    }
+    findBestMatch(topic) {
+        // Exact match
+        if (ALL_TOPICS.includes(topic)) {
+            return topic;
+        }
+        // Partial match
+        const partialMatch = ALL_TOPICS.find(t => t.includes(topic) || topic.includes(t));
+        if (partialMatch) {
+            return partialMatch;
+        }
+        return null;
+    }
+    getDocumentation(topic) {
+        return DOCS[topic] || `Documentation for ${topic} is not available.`;
     }
 }
 export default PytestDocsGuideTool;

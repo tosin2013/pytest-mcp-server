@@ -37,15 +37,7 @@ class FailureAnalyticsTool extends MCPTool {
             failures = JSON.parse(failuresData);
         }
         catch (error) {
-            const responseData = { error: "Failed to load failures data" };
-            return {
-                content: [
-                    {
-                        type: "text",
-                        text: JSON.stringify(responseData, null, 2)
-                    }
-                ]
-            };
+            return { error: "Failed to load failures data" };
         }
         // Filter failures by time range and status
         const filteredFailures = Object.values(failures).filter((failure) => {
@@ -79,21 +71,14 @@ class FailureAnalyticsTool extends MCPTool {
         const insights = this.generateInsights(groups);
         // Save failure groups
         this.saveFailureGroups(groups);
-        const responseData = {
+        // Return analytics data directly - MCP framework will wrap it
+        return {
             total_failures: filteredFailures.length,
             group_count: groups.length,
             groups: groups,
             insights: insights,
             group_by: groupBy,
             time_range: timeRange
-        };
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(responseData, null, 2)
-                }
-            ]
         };
     }
     groupFailures(failures, groupBy) {
