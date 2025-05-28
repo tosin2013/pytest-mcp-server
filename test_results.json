@@ -1,0 +1,38 @@
+[
+  {
+    "test_name": "configuration_validation",
+    "status": "passed",
+    "execution_time": 1.1920928955078125e-06,
+    "message": "Configuration validation passed",
+    "confidence_score": 0.9,
+    "timestamp": "2025-05-28T16:06:27.505755",
+    "error_info": null
+  },
+  {
+    "test_name": "pytest-mcp-server_connectivity",
+    "status": "passed",
+    "execution_time": 0.07910609245300293,
+    "message": "Successfully connected to pytest-mcp-server",
+    "confidence_score": 0.95,
+    "timestamp": "2025-05-28T16:06:27.584882",
+    "error_info": null
+  },
+  {
+    "test_name": "pytest-mcp-server_tool_discovery",
+    "status": "passed",
+    "execution_time": 0.003442049026489258,
+    "message": "Discovered 8 tools for pytest-mcp-server",
+    "confidence_score": 0.9,
+    "timestamp": "2025-05-28T16:06:27.588348",
+    "error_info": null
+  },
+  {
+    "test_name": "pytest-mcp-server_debug_with_principle_execution",
+    "status": "error",
+    "execution_time": 0.0008969306945800781,
+    "message": "Tool execution error for debug_with_principle on pytest-mcp-server: 6 validation errors for CallToolResult\ncontent.0.TextContent.type\n  Input should be 'text' [type=literal_error, input_value='error', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\ncontent.0.ImageContent.type\n  Input should be 'image' [type=literal_error, input_value='error', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\ncontent.0.ImageContent.data\n  Field required [type=missing, input_value={'type': 'error', 'text':...e\": \"Required\"\\n  }\\n]'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ncontent.0.ImageContent.mimeType\n  Field required [type=missing, input_value={'type': 'error', 'text':...e\": \"Required\"\\n  }\\n]'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ncontent.0.EmbeddedResource.type\n  Input should be 'resource' [type=literal_error, input_value='error', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\ncontent.0.EmbeddedResource.resource\n  Field required [type=missing, input_value={'type': 'error', 'text':...e\": \"Required\"\\n  }\\n]'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing",
+    "confidence_score": 0.8,
+    "timestamp": "2025-05-28T16:06:27.590135",
+    "error_info": "Traceback (most recent call last):\n  File \"/Users/tosinakinosho/.local/pipx/venvs/mcp-testing-framework/lib/python3.13/site-packages/mcp_client_cli/testing/mcp_tester.py\", line 286, in test_tool_execution\n    result = await target_tool._arun(**test_args)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tosinakinosho/.local/pipx/venvs/mcp-testing-framework/lib/python3.13/site-packages/mcp_client_cli/tool.py\", line 142, in _arun\n    result = await self.session.call_tool(self.name, arguments=kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tosinakinosho/.local/pipx/venvs/mcp-testing-framework/lib/python3.13/site-packages/mcp/client/session.py\", line 281, in call_tool\n    return await self.send_request(\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<12 lines>...\n    )\n    ^\n  File \"/Users/tosinakinosho/.local/pipx/venvs/mcp-testing-framework/lib/python3.13/site-packages/mcp/shared/session.py\", line 296, in send_request\n    return result_type.model_validate(response_or_error.result)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/tosinakinosho/.local/pipx/venvs/mcp-testing-framework/lib/python3.13/site-packages/pydantic/main.py\", line 705, in model_validate\n    return cls.__pydantic_validator__.validate_python(\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^\n        obj, strict=strict, from_attributes=from_attributes, context=context, by_alias=by_alias, by_name=by_name\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\npydantic_core._pydantic_core.ValidationError: 6 validation errors for CallToolResult\ncontent.0.TextContent.type\n  Input should be 'text' [type=literal_error, input_value='error', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\ncontent.0.ImageContent.type\n  Input should be 'image' [type=literal_error, input_value='error', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\ncontent.0.ImageContent.data\n  Field required [type=missing, input_value={'type': 'error', 'text':...e\": \"Required\"\\n  }\\n]'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ncontent.0.ImageContent.mimeType\n  Field required [type=missing, input_value={'type': 'error', 'text':...e\": \"Required\"\\n  }\\n]'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\ncontent.0.EmbeddedResource.type\n  Input should be 'resource' [type=literal_error, input_value='error', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\ncontent.0.EmbeddedResource.resource\n  Field required [type=missing, input_value={'type': 'error', 'text':...e\": \"Required\"\\n  }\\n]'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.11/v/missing\n"
+  }
+]

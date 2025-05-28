@@ -131,12 +131,18 @@ class DebugWithPrincipleTool extends MCPTool<DebugWithPrincipleInput> {
       const failuresData = fs.readFileSync(FAILURES_FILE, 'utf-8');
       failures = JSON.parse(failuresData);
     } catch (error) {
-      throw new Error("Failed to read failures data file");
+      return {
+        error: "Failed to read failures data file",
+        details: error instanceof Error ? error.message : String(error)
+      };
     }
 
     // Check if failure exists
     if (!failures[input.failure_id]) {
-      throw new Error(`Failure with ID ${input.failure_id} not found`);
+      return {
+        error: `Failure with ID ${input.failure_id} not found`,
+        available_failures: Object.keys(failures)
+      };
     }
     
     const failure = failures[input.failure_id];
@@ -144,7 +150,11 @@ class DebugWithPrincipleTool extends MCPTool<DebugWithPrincipleInput> {
     // Determine which principle to apply
     const principleNumber = input.principle_number || failure.current_debug_step;
     if (principleNumber < 1 || principleNumber > 9) {
-      throw new Error(`Invalid principle number: ${principleNumber}`);
+      return {
+        error: `Invalid principle number: ${principleNumber}`,
+        valid_range: "1-9",
+        current_step: failure.current_debug_step
+      };
     }
     
     const principle = DEBUG_PRINCIPLES[principleNumber - 1];
@@ -155,7 +165,10 @@ class DebugWithPrincipleTool extends MCPTool<DebugWithPrincipleInput> {
       const sessionsData = fs.readFileSync(DEBUG_SESSIONS_FILE, 'utf-8');
       sessions = JSON.parse(sessionsData);
     } catch (error) {
-      throw new Error("Failed to read debug sessions data file");
+      return {
+        error: "Failed to read debug sessions data file",
+        details: error instanceof Error ? error.message : String(error)
+      };
     }
     
     // Find the debug session for this failure
