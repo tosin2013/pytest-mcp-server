@@ -114,6 +114,18 @@ You can trigger tests manually with custom parameters:
 
 ### Common Issues
 
+#### 🔴 Deprecated Actions (FIXED ✅)
+**Issue**: `actions/upload-artifact@v3` and `actions/download-artifact@v3` are deprecated
+```
+This request has been automatically failed because it uses a deprecated version of actions/upload-artifact: v3
+```
+
+**Solution**: Updated to v4 in the workflow file:
+```yaml
+- uses: actions/upload-artifact@v4  # ✅ Updated from v3
+- uses: actions/download-artifact@v4  # ✅ Updated from v3
+```
+
 #### 🔴 MCP Server Build Failure
 ```bash
 # Check Node.js dependencies
@@ -134,6 +146,21 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node dist/index.js --std
 - Verify `OPENAI_API_KEY` is set in repository secrets
 - Check API key has sufficient credits/permissions
 - Ensure key format is correct (`sk-...`)
+
+#### 🔴 Dagger Pipeline Issues
+```bash
+# Check Dagger installation
+dagger version
+
+# Test local pipeline
+cd /path/to/pytest-mcp-server
+python dagger_pipeline.py
+```
+
+#### 🔴 Python/Node Version Conflicts
+- Matrix tests multiple versions (3.11/3.12 × 18/20)
+- Check specific combination logs if one fails
+- Verify dependencies support target versions
 
 ## 🏗️ Dagger Cloud Integration
 
@@ -184,6 +211,24 @@ If you encounter issues with the GitHub Action:
 2. **Verify Secrets**: Ensure all required secrets are configured
 3. **Test Locally**: Run tests locally to isolate issues
 4. **Open Issue**: Create a GitHub issue with logs and error details
+
+### Quick Fixes for Common Problems
+
+```bash
+# Update deprecated actions (if you see v3 warnings)
+sed -i 's/actions\/upload-artifact@v3/actions\/upload-artifact@v4/g' .github/workflows/*.yml
+sed -i 's/actions\/download-artifact@v3/actions\/download-artifact@v4/g' .github/workflows/*.yml
+
+# Test MCP server locally
+npm install && npm run build
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node dist/index.js --stdio
+
+# Verify secrets are set
+gh secret list
+
+# Manual test run
+gh workflow run "Test pytest-mcp-server with Dagger Cloud"
+```
 
 ---
 

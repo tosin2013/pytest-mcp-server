@@ -281,7 +281,7 @@ jobs:
           uv run python -m mcp_client_cli.cli --test-mcp-servers --suite-type ${{ github.event.inputs.test_suite || 'all' }} --output-format json
       
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results-py${{ matrix.python-version }}-node${{ matrix.node-version }}
@@ -292,7 +292,7 @@ jobs:
           retention-days: 30
       
       - name: Upload Dagger logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always() && env.DAGGER_CLOUD_TOKEN
         with:
           name: dagger-logs-py${{ matrix.python-version }}-node${{ matrix.node-version }}
@@ -309,7 +309,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Download all test results
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: test-results
       
@@ -416,7 +416,7 @@ jobs:
             });
       
       - name: Upload comprehensive report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pytest-mcp-server-test-report
           path: comprehensive_report.json
@@ -458,7 +458,7 @@ jobs:
           "
       
       - name: Upload badge data
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-badge
           path: badge.json
