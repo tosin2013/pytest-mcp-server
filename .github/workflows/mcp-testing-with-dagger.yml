@@ -71,7 +71,7 @@ jobs:
       - name: Test basic connectivity
         run: |
           echo "🧪 Testing basic MCP server connectivity..."
-          timeout 10s bash -c 'echo "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}" | node dist/index.js --stdio' || echo "Basic connectivity test completed"
+          echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node dist/index.js --stdio | head -20 || echo "Basic connectivity test completed"
       
       - name: Create MCP configuration
         run: |
