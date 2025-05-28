@@ -115,6 +115,14 @@ jobs:
           # Run the test and capture results, but don't fail on asyncio cleanup errors
           mcp-test --test-mcp-servers --test-output-format table 2>&1 | tee mcp_test_output.log || true
           
+          # Check for critical tool validation errors first
+          if grep -q "validation errors for CallToolResult" mcp_test_output.log; then
+            echo "❌ CRITICAL: Tool validation errors detected in basic connectivity test"
+            echo "Your MCP server tools have formatting bugs that must be fixed:"
+            grep -A 5 "validation errors for CallToolResult" mcp_test_output.log || true
+            exit 1
+          fi
+          
           # Check if the core functionality worked (look for test results)
           if grep -q "MCP Server Test Results" mcp_test_output.log; then
             echo "✅ MCP server connectivity test completed successfully"
@@ -128,13 +136,33 @@ jobs:
       
       - name: Run comprehensive test suite
         if: env.OPENAI_API_KEY != ''
-        continue-on-error: true
         run: |
           echo "🧪 Running comprehensive test suite..."
-          # Try the test suite but don't fail the workflow if there are framework bugs
+          # Capture output to analyze results
           mcp-test --run-test-suite ${{ github.event.inputs.test_suite || 'functional' }} \
             --test-output-format json \
-            --test-timeout 60 || echo "⚠️ Test suite completed with errors (framework issues)"
+            --test-timeout 60 2>&1 | tee test_suite_output.log || true
+          
+          # Check for actual tool validation errors (real bugs)
+          if grep -q "validation errors for CallToolResult" test_suite_output.log; then
+            echo "❌ CRITICAL: Tool validation errors detected - MCP server tools are malformed"
+            echo "This indicates bugs in the MCP server implementation that must be fixed:"
+            grep -A 10 "validation errors for CallToolResult" test_suite_output.log || true
+            exit 1
+          elif grep -q "AttributeError.*remediation_suggestions" test_suite_output.log; then
+            echo "⚠️ Framework bug detected (remediation_suggestions) - continuing"
+          elif grep -q "RuntimeError.*cancel scope" test_suite_output.log; then
+            echo "⚠️ Framework cleanup issue detected - continuing"
+          fi
+          
+          # Check if test results were saved (indicates partial success)
+          if grep -q "Test results saved to test_results.json" test_suite_output.log; then
+            echo "✅ Test suite executed and results saved"
+          else
+            echo "❌ Test suite failed to execute properly"
+            exit 1
+          fi
+          
           echo "✅ Test suite step completed"
       
       - name: Generate test report
