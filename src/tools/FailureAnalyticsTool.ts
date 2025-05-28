@@ -60,7 +60,15 @@ class FailureAnalyticsTool extends MCPTool<FailureAnalyticsInput> {
       const failuresData = fs.readFileSync(FAILURES_FILE, 'utf-8');
       failures = JSON.parse(failuresData);
     } catch (error) {
-      return { error: "Failed to load failures data" };
+      const responseData = { error: "Failed to load failures data" };
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(responseData, null, 2)
+          }
+        ]
+      };
     }
     
     // Filter failures by time range and status
@@ -100,13 +108,22 @@ class FailureAnalyticsTool extends MCPTool<FailureAnalyticsInput> {
     // Save failure groups
     this.saveFailureGroups(groups);
     
-    return {
+    const responseData = {
       total_failures: filteredFailures.length,
       group_count: groups.length,
       groups: groups,
       insights: insights,
       group_by: groupBy,
       time_range: timeRange
+    };
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(responseData, null, 2)
+        }
+      ]
     };
   }
   

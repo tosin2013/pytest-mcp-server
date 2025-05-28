@@ -745,7 +745,7 @@ class PytestDocsGuideTool extends MCPTool<DocsInput> {
     
     if (topic === 'all') {
       // Return a list of all available topics
-      return {
+      const responseData = {
         docs: `# Available Documentation Topics
 
 The following documentation topics are available:
@@ -758,21 +758,48 @@ pytest_docs_guide(topic="integration")
 \`\`\``,
         available_topics: ALL_TOPICS
       };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(responseData, null, 2)
+          }
+        ]
+      };
     }
     
     // Return docs for the specified topic
     if (DOCS[topic]) {
-      return {
+      const responseData = {
         topic,
         docs: DOCS[topic],
         description: this.getTopicDescription(topic)
       };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(responseData, null, 2)
+          }
+        ]
+      };
     } else {
       // Topic not found, return available topics
-      return {
+      const responseData = {
         error: `Topic '${topic}' not found.`,
         available_topics: ALL_TOPICS,
         suggestion: `Try one of these topics: ${ALL_TOPICS.join(', ')}`
+      };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(responseData, null, 2)
+          }
+        ]
       };
     }
   }

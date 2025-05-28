@@ -126,79 +126,43 @@ class GetFailureInfoTool extends MCPTool<GetFailureInfoInput> {
 
     // Check if failure exists
     if (!failures[input.failure_id]) {
-      throw new Error(`Failure with ID ${input.failure_id} not found`);
+      const responseData = {
+        error: `Failure with ID ${input.failure_id} not found`
+      };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(responseData, null, 2)
+          }
+        ]
+      };
     }
-
+    
     const failure = failures[input.failure_id];
-
-    // Load debug sessions
-    let sessions: Record<string, DebugSession> = {};
-    try {
-      const sessionsData = fs.readFileSync(DEBUG_SESSIONS_FILE, 'utf-8');
-      sessions = JSON.parse(sessionsData);
-    } catch (error) {
-      throw new Error("Failed to read debug sessions data file");
-    }
-
-    // Find the debug session for this failure
-    const sessionId = `session_${input.failure_id}`;
-    const session = sessions[sessionId] || {
-      id: sessionId,
-      failure_id: input.failure_id,
-      created_at: "N/A",
-      debug_steps: []
+    
+    // Return detailed failure information
+    const responseData = {
+      id: failure.id,
+      timestamp: failure.timestamp,
+      status: failure.status,
+      current_debug_step: failure.current_debug_step,
+      test_name: failure.test_name,
+      file_path: failure.file_path,
+      line_number: failure.line_number,
+      error_message: failure.error_message,
+      traceback: failure.traceback,
+      locals: failure.locals || {}
     };
-
-    // Get current and next debugging principles
-    const currentPrincipleNumber = failure.current_debug_step;
-    const currentPrinciple = DEBUG_PRINCIPLES[currentPrincipleNumber - 1];
-    
-    // Find the latest completed step
-    const completedSteps = session.debug_steps
-      .filter(step => step.status === "completed")
-      .sort((a, b) => b.step - a.step);
-    
-    const latestCompletedStep = completedSteps.length > 0 ? completedSteps[0] : null;
     
     return {
-      failure: {
-        id: failure.id,
-        timestamp: failure.timestamp,
-        status: failure.status,
-        test_name: failure.test_name,
-        file_path: failure.file_path,
-        line_number: failure.line_number,
-        error_message: failure.error_message,
-        traceback: failure.traceback,
-        locals: failure.locals
-      },
-      debugging: {
-        current_principle: {
-          number: currentPrincipleNumber,
-          name: currentPrinciple.name,
-          description: currentPrinciple.description,
-          prompt: currentPrinciple.prompt
-        },
-        completed_principles: session.debug_steps
-          .filter(step => step.status === "completed")
-          .map(step => ({
-            number: step.step,
-            name: step.name,
-            analysis: step.llm_analysis,
-            completed_at: step.completed_at
-          })),
-        pending_principles: session.debug_steps
-          .filter(step => step.status === "pending")
-          .map(step => ({
-            number: step.step,
-            name: step.name
-          })),
-        progress: {
-          completed: completedSteps.length,
-          total: 9,
-          percentage: Math.round((completedSteps.length / 9) * 100)
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(responseData, null, 2)
         }
-      }
+      ]
     };
   }
 }

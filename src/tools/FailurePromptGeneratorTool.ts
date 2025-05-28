@@ -54,20 +54,54 @@ class FailurePromptGeneratorTool extends MCPTool<PromptGeneratorInput> {
     
     // Validate input
     if (!input.group_id && !input.failure_id) {
-      return { 
+      const responseData = { 
         error: "Either group_id or failure_id must be provided" 
+      };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(responseData, null, 2)
+          }
+        ]
       };
     }
     
     try {
       if (input.group_id) {
-        return await this.generateGroupPrompt(input.group_id, promptStyle);
+        const result = await this.generateGroupPrompt(input.group_id, promptStyle);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
+        };
       } else if (input.failure_id) {
-        return await this.generateSingleFailurePrompt(input.failure_id, promptStyle);
+        const result = await this.generateSingleFailurePrompt(input.failure_id, promptStyle);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
+        };
       }
     } catch (error) {
-      return { 
+      const responseData = { 
         error: `Failed to generate debug prompt: ${error}` 
+      };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(responseData, null, 2)
+          }
+        ]
       };
     }
   }
@@ -414,4 +448,4 @@ Focus exclusively on determining the root cause of this failure.`;
   }
 }
 
-export default FailurePromptGeneratorTool; 
+export default FailurePromptGeneratorTool;

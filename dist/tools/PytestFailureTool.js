@@ -133,30 +133,54 @@ class PytestFailureTool extends MCPTool {
             }
             // Return success or error response
             if (success) {
-                return {
+                const responseData = {
                     failureId,
                     sessionId,
                     message: "Failure registered successfully and debug session created",
                     next_step: "Apply debugging principle 1: Understand the System"
                 };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(responseData, null, 2)
+                        }
+                    ]
+                };
             }
             else {
-                return {
+                const responseData = {
                     failureId,
                     sessionId,
                     error: true,
                     message: errorMessage || "Failed to register failure due to file system errors",
                     suggestion: "Check server logs and data directory permissions"
                 };
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(responseData, null, 2)
+                        }
+                    ]
+                };
             }
         }
         catch (error) {
             // Catch any unexpected errors
             console.error(`Unexpected error in register_pytest_failure: ${error.message}`);
-            return {
+            const responseData = {
                 error: true,
                 message: `Unexpected error: ${error.message}`,
                 suggestion: "Check server logs for details"
+            };
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(responseData, null, 2)
+                    }
+                ]
             };
         }
     }

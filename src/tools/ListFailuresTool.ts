@@ -60,7 +60,7 @@ class ListFailuresTool extends MCPTool<ListFailuresInput> {
     failuresList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
     // Return simplified failure records
-    return {
+    const responseData = {
       total: failuresList.length,
       failures: failuresList.map(failure => ({
         id: failure.id,
@@ -71,6 +71,16 @@ class ListFailuresTool extends MCPTool<ListFailuresInput> {
         error_message: failure.error_message,
         current_debug_step: failure.current_debug_step
       }))
+    };
+    
+    // Return in MCP-compatible format
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(responseData, null, 2)
+        }
+      ]
     };
   }
 }
