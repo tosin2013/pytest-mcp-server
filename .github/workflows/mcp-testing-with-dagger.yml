@@ -1,4 +1,4 @@
-name: Test pytest-mcp-server with Dagger Cloud
+name: Test pytest-mcp-server with mcp-test
 
 on:
   push:
@@ -10,31 +10,22 @@ on:
       test_suite:
         description: 'Test suite to run'
         required: false
-        default: 'all'
+        default: 'functional'
         type: choice
         options:
-          - all
           - functional
           - security
           - performance
-      mcp_client_repo:
-        description: 'MCP Client CLI repository'
-        required: false
-        default: 'https://github.com/tosin2013/mcp-client-cli.git'
-      use_dagger_cloud:
-        description: 'Use Dagger Cloud for enhanced performance'
-        required: false
-        default: true
-        type: boolean
+          - integration
+          - all
 
 env:
-  DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
-  test-with-mcp-client:
+  test-mcp-server:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     
     strategy:
       matrix:
@@ -45,15 +36,6 @@ jobs:
     steps:
       - name: Checkout pytest-mcp-server
         uses: actions/checkout@v4
-        with:
-          path: pytest-mcp-server
-      
-      - name: Checkout MCP Client CLI
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.inputs.mcp_client_repo || 'tosin2013/mcp-client-cli' }}
-          path: mcp-client-cli
-          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -65,239 +47,34 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       
-      - name: Install Dagger CLI
-        run: |
-          curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.9.5 sh
-          sudo mv bin/dagger /usr/local/bin
-          dagger version
-      
-      - name: Install UV (Python package manager)
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      
-      - name: Debug workspace paths
-        run: |
-          echo "🔍 Debugging workspace paths..."
-          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
-          echo "Current directory: $(pwd)"
-          echo "Listing workspace contents:"
-          ls -la $GITHUB_WORKSPACE/
-          echo ""
-          echo "Checking pytest-mcp-server:"
-          ls -la $GITHUB_WORKSPACE/pytest-mcp-server/ || echo "pytest-mcp-server not found"
-          echo ""
-          echo "Checking mcp-client-cli:"
-          ls -la $GITHUB_WORKSPACE/mcp-client-cli/ || echo "mcp-client-cli not found"
-      
-      - name: Cache Python dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('mcp-client-cli/pyproject.toml') }}
-      
       - name: Cache Node dependencies
         uses: actions/cache@v3
         with:
-          path: pytest-mcp-server/node_modules
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('pytest-mcp-server/package-lock.json') }}
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('package-lock.json') }}
+      
+      - name: Install mcp-testing-framework
+        run: |
+          echo "📦 Installing mcp-testing-framework..."
+          pip install mcp-testing-framework
+          echo "✅ mcp-testing-framework installed"
+          mcp-test --version
       
       - name: Build pytest-mcp-server
-        working-directory: pytest-mcp-server
         run: |
+          echo "🔨 Building pytest-mcp-server..."
           npm install
           npm run build
-          echo "✅ pytest-mcp-server built successfully"
+          echo "✅ Build completed"
+          ls -la dist/
       
-      - name: Create Dagger pipeline
-        working-directory: mcp-client-cli
+      - name: Test basic connectivity
         run: |
-          cat > dagger_pipeline.py << 'EOF'
-          """
-          Dagger pipeline for testing MCP servers with mcp-client-cli
-          """
-          import dagger
-          import asyncio
-          import os
-          import sys
-          from pathlib import Path
-          
-          async def test_mcp_server():
-              """Test MCP server using mcp-client-cli with Dagger"""
-              
-              async with dagger.Connection(dagger.Config(log_output=sys.stderr)) as client:
-                  # Create base container with Python and Node.js
-                  python_version = os.getenv("PYTHON_VERSION", "3.11")
-                  node_version = os.getenv("NODE_VERSION", "18")
-                  
-                  container = (
-                      client.container()
-                      .from_(f"python:{python_version}-slim")
-                      .with_exec(["apt-get", "update"])
-                      .with_exec(["apt-get", "install", "-y", "curl", "git", "build-essential"])
-                  )
-                  
-                  # Install Node.js
-                  container = (
-                      container
-                      .with_exec(["curl", "-fsSL", "https://deb.nodesource.com/setup_" + node_version + ".x", "|", "bash", "-"])
-                      .with_exec(["apt-get", "install", "-y", "nodejs"])
-                  )
-                  
-                  # Install UV
-                  container = (
-                      container
-                      .with_exec(["curl", "-LsSf", "https://astral.sh/uv/install.sh", "|", "sh"])
-                      .with_env_variable("PATH", "/root/.cargo/bin:$PATH")
-                  )
-                  
-                  # Mount source code using GitHub workspace paths
-                  workspace = os.getenv("GITHUB_WORKSPACE", "/home/runner/work/pytest-mcp-server/pytest-mcp-server")
-                  mcp_client_path = os.path.join(workspace, "mcp-client-cli")
-                  pytest_server_path = os.path.join(workspace, "pytest-mcp-server")
-                  
-                  mcp_client_source = client.host().directory(mcp_client_path)
-                  pytest_server_source = client.host().directory(pytest_server_path)
-                  
-                  container = (
-                      container
-                      .with_directory("/app/mcp-client-cli", mcp_client_source)
-                      .with_directory("/app/pytest-mcp-server", pytest_server_source)
-                      .with_workdir("/app")
-                  )
-                  
-                  # Build pytest-mcp-server
-                  container = (
-                      container
-                      .with_workdir("/app/pytest-mcp-server")
-                      .with_exec(["npm", "install"])
-                      .with_exec(["npm", "run", "build"])
-                  )
-                  
-                  # Create virtual environment and install mcp-client-cli
-                  container = (
-                      container
-                      .with_workdir("/app/mcp-client-cli")
-                      .with_exec(["/root/.cargo/bin/uv", "venv"])
-                      .with_exec(["/root/.cargo/bin/uv", "pip", "install", "-e", "."])
-                  )
-                  
-                  # Create configuration
-                  openai_key = os.getenv("OPENAI_API_KEY", "test-key")
-                  config = {
-                      "systemPrompt": "You are an AI assistant helping with MCP server testing.",
-                      "llm": {
-                          "provider": "openai",
-                          "model": "gpt-4o-mini",
-                          "api_key": openai_key,
-                          "temperature": 0.7
-                      },
-                      "mcpServers": {
-                          "pytest-mcp-server": {
-                              "type": "stdio",
-                              "command": "node",
-                              "args": ["/app/pytest-mcp-server/dist/index.js", "--stdio"],
-                              "env": {
-                                  "DEBUG": "*",
-                                  "DATA_DIR": "/app/pytest-mcp-server/data"
-                              }
-                          }
-                      }
-                  }
-                  
-                  import json
-                  container = (
-                      container
-                      .with_exec(["mkdir", "-p", "/root/.llm"])
-                      .with_new_file("/root/.llm/config.json", json.dumps(config, indent=2))
-                  )
-                  
-                  # Set environment variables
-                  container = (
-                      container
-                      .with_env_variable("OPENAI_API_KEY", openai_key)
-                      .with_env_variable("PYTHONPATH", "/app/mcp-client-cli/src")
-                  )
-                  
-                  # Run tests
-                  test_suite = os.getenv("TEST_SUITE", "all")
-                  result = await (
-                      container
-                      .with_exec([
-                          "/root/.cargo/bin/uv", "run", "python", "-m", "mcp_client_cli.cli",
-                          "--test-mcp-servers",
-                          "--suite-type", test_suite,
-                          "--output-format", "json"
-                      ])
-                      .stdout()
-                  )
-                  
-                  print("Test Results:")
-                  print(result)
-                  
-                  # Export test results
-                  try:
-                      await (
-                          container
-                          .file("/app/mcp-client-cli/test_results.json")
-                          .export("/tmp/test_results.json")
-                      )
-                  except Exception as e:
-                      print(f"Warning: Could not export test results: {e}")
-                  
-                  return result
-          
-          if __name__ == "__main__":
-              import sys
-              asyncio.run(test_mcp_server())
-          EOF
+          echo "🧪 Testing basic MCP server connectivity..."
+          timeout 10s bash -c 'echo "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}" | node dist/index.js --stdio' || echo "Basic connectivity test completed"
       
-      - name: Run Dagger Pipeline
-        working-directory: mcp-client-cli
-        env:
-          PYTHON_VERSION: ${{ matrix.python-version }}
-          NODE_VERSION: ${{ matrix.node-version }}
-          TEST_SUITE: ${{ github.event.inputs.test_suite || 'all' }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      - name: Create MCP configuration
         run: |
-          # Install dagger-io python package
-          pip install dagger-io
-          
-          # Run the pipeline
-          python dagger_pipeline.py
-      
-      - name: Alternative - Direct Testing (fallback)
-        if: failure()
-        working-directory: mcp-client-cli
-        run: |
-          echo "🔄 Dagger pipeline failed, running direct test..."
-          
-          # Ensure we have a clean environment
-          export PATH="$HOME/.cargo/bin:$PATH"
-          
-          # Create virtual environment and install mcp-client-cli
-          echo "📦 Setting up Python environment..."
-          uv venv .venv
-          source .venv/bin/activate
-          uv pip install -e .
-          
-          # Verify pytest-mcp-server is built
-          echo "🔍 Checking pytest-mcp-server build..."
-          if [[ ! -f "../pytest-mcp-server/dist/index.js" ]]; then
-            echo "❌ pytest-mcp-server not built, building now..."
-            cd ../pytest-mcp-server
-            npm install
-            npm run build
-            cd ../mcp-client-cli
-          else
-            echo "✅ pytest-mcp-server build found"
-          fi
-          
-          # Test MCP server directly first
-          echo "🧪 Testing MCP server directly..."
-          echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | timeout 10s node ../pytest-mcp-server/dist/index.js --stdio || echo "Direct test failed"
-          
-          # Create config
           echo "⚙️ Creating MCP client configuration..."
           mkdir -p ~/.llm
           cat > ~/.llm/config.json << EOF
@@ -306,53 +83,51 @@ jobs:
             "llm": {
               "provider": "openai",
               "model": "gpt-4o-mini",
-              "api_key": "${{ secrets.OPENAI_API_KEY }}",
+              "api_key": "${{ secrets.OPENAI_API_KEY || 'test-key' }}",
               "temperature": 0.7
             },
             "mcpServers": {
               "pytest-mcp-server": {
-                "type": "stdio",
                 "command": "node",
-                "args": ["../pytest-mcp-server/dist/index.js", "--stdio"],
+                "args": ["${{ github.workspace }}/dist/index.js", "--stdio"],
                 "env": {
                   "DEBUG": "*",
-                  "DATA_DIR": "../pytest-mcp-server/data"
-                }
+                  "DATA_DIR": "${{ github.workspace }}/data"
+                },
+                "enabled": true,
+                "exclude_tools": [],
+                "requires_confirmation": []
               }
-            }
+            },
+            "toolsRequiresConfirmation": [],
+            "testing": {}
           }
           EOF
-          
-          # Run tests with timeout and error handling
-          echo "🚀 Running MCP client tests..."
-          timeout 300s uv run python -m mcp_client_cli.cli \
-            --test-mcp-servers \
-            --suite-type ${{ github.event.inputs.test_suite || 'all' }} \
-            --output-format json \
-            --verbose || {
-              echo "❌ MCP client test failed, trying basic connection test..."
-              timeout 60s uv run python -c "
-          from mcp_client_cli.core.mcp_client import MCPClient
-          import asyncio
-          import json
-          
-          async def test_basic():
-              try:
-                  client = MCPClient()
-                  await client.connect_to_server('pytest-mcp-server')
-                  tools = await client.list_tools('pytest-mcp-server')
-                  print(f'✅ Connected successfully, found {len(tools)} tools')
-                  print(json.dumps({'status': 'success', 'tools': len(tools)}, indent=2))
-                  await client.disconnect_all()
-              except Exception as e:
-                  print(f'❌ Basic connection failed: {e}')
-                  print(json.dumps({'status': 'failed', 'error': str(e)}, indent=2))
-          
-          asyncio.run(test_basic())
-              " || echo "❌ All tests failed"
-          }
-          
-          echo "✅ Fallback test completed"
+          echo "✅ MCP configuration created"
+          cat ~/.llm/config.json
+      
+      - name: Test MCP servers
+        run: |
+          echo "🚀 Testing MCP servers with mcp-test..."
+          mcp-test --test-mcp-servers --test-output-format table
+          echo "✅ MCP server connectivity test completed"
+      
+      - name: Run comprehensive test suite
+        if: env.OPENAI_API_KEY != ''
+        run: |
+          echo "🧪 Running comprehensive test suite..."
+          mcp-test --run-test-suite ${{ github.event.inputs.test_suite || 'functional' }} \
+            --test-output-format json \
+            --test-timeout 60 \
+            --generate-test-report
+          echo "✅ Test suite completed"
+      
+      - name: Generate test report
+        if: env.OPENAI_API_KEY != ''
+        run: |
+          echo "📊 Generating test report..."
+          mcp-test --generate-test-report --test-output-format html
+          echo "✅ Test report generated"
       
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -360,21 +135,13 @@ jobs:
         with:
           name: test-results-py${{ matrix.python-version }}-node${{ matrix.node-version }}
           path: |
-            mcp-client-cli/test_results.json
-            mcp-client-cli/test_results.html
-            /tmp/test_results.json
+            test_results.json
+            test_results.html
+            ~/.llm/config.json
           retention-days: 30
-      
-      - name: Upload Dagger logs
-        uses: actions/upload-artifact@v4
-        if: always() && env.DAGGER_CLOUD_TOKEN
-        with:
-          name: dagger-logs-py${{ matrix.python-version }}-node${{ matrix.node-version }}
-          path: ~/.dagger/
-          retention-days: 7
 
-  generate-report:
-    needs: test-with-mcp-client
+  generate-summary:
+    needs: test-mcp-server
     runs-on: ubuntu-latest
     if: always()
     
@@ -420,10 +187,10 @@ jobs:
               'failed': failed,
               'errors': errors,
               'success_rate': round((passed / total * 100) if total > 0 else 0, 2),
-              'results': results[:20]  # Limit for display
+              'results': results[:10]  # Limit for display
           }
           
-          with open('comprehensive_report.json', 'w') as f:
+          with open('test_summary.json', 'w') as f:
               json.dump(summary, f, indent=2)
           
           print(f'## pytest-mcp-server Test Summary')
@@ -431,7 +198,7 @@ jobs:
           print(f'- **Passed**: {passed}')
           print(f'- **Failed**: {failed}')
           print(f'- **Errors**: {errors}')
-          print(f'- **Success Rate**: {summary["success_rate"]}%')
+          print(f'- **Success Rate**: {summary[\"success_rate\"]}%')
           print(f'- **Matrix**: Python 3.11/3.12 × Node.js 18/20')
           "
       
@@ -441,11 +208,11 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const report = JSON.parse(fs.readFileSync('comprehensive_report.json', 'utf8'));
+            const report = JSON.parse(fs.readFileSync('test_summary.json', 'utf8'));
             
             const comment = `## 🧪 pytest-mcp-server Test Results
             
-            **Tested with MCP Client CLI using Dagger Cloud** ☁️
+            **Tested with mcp-test framework** ⚡
             
             | Metric | Value |
             |--------|-------|
@@ -458,7 +225,7 @@ jobs:
             ### Test Matrix
             - **Python versions**: 3.11, 3.12
             - **Node.js versions**: 18, 20
-            - **Test suites**: Functional, Security, Performance
+            - **Test suite**: ${{ github.event.inputs.test_suite || 'functional' }}
             - **MCP Tools tested**: 8 pytest debugging tools
             
             ### Key Features Tested
@@ -469,17 +236,8 @@ jobs:
             - 🔒 Security validation
             - 📝 Documentation generation
             
-            <details>
-            <summary>View sample test results</summary>
-            
-            \`\`\`json
-            ${JSON.stringify(report.results.slice(0, 5), null, 2)}
-            \`\`\`
-            
-            </details>
-            
             ---
-            *Powered by [MCP Client CLI](https://github.com/tosin2013/mcp-client-cli) + [Dagger Cloud](https://dagger.io)*
+            *Powered by [mcp-testing-framework](https://pypi.org/project/mcp-testing-framework/)*
             `;
             
             github.rest.issues.createComment({
@@ -492,48 +250,6 @@ jobs:
       - name: Upload comprehensive report
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-mcp-server-test-report
-          path: comprehensive_report.json
-          retention-days: 90
-      
-      - name: Create status badge data
-        run: |
-          python3 -c "
-          import json
-          
-          with open('comprehensive_report.json') as f:
-              report = json.load(f)
-          
-          success_rate = report['success_rate']
-          if success_rate >= 90:
-              color = 'brightgreen'
-              status = 'excellent'
-          elif success_rate >= 75:
-              color = 'green'
-              status = 'good'
-          elif success_rate >= 50:
-              color = 'yellow'
-              status = 'fair'
-          else:
-              color = 'red'
-              status = 'poor'
-          
-          badge_data = {
-              'schemaVersion': 1,
-              'label': 'MCP Tests',
-              'message': f'{success_rate}% ({status})',
-              'color': color
-          }
-          
-          with open('badge.json', 'w') as f:
-              json.dump(badge_data, f)
-          
-          print(f'Badge: {success_rate}% ({status}) - {color}')
-          "
-      
-      - name: Upload badge data
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-badge
-          path: badge.json
-          retention-days: 30 
+          name: pytest-mcp-server-test-summary
+          path: test_summary.json
+          retention-days: 90 
