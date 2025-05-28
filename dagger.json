@@ -1,0 +1,8 @@
+{
+  "name": "pytest-mcp-server",
+  "sdk": "python",
+  "dependencies": [],
+  "source": "dagger",
+  "engineVersion": "v0.9.5",
+  "description": "Dagger pipeline for testing pytest-mcp-server with MCP Client CLI"
+} 
