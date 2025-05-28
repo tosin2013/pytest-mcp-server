@@ -58,7 +58,7 @@ jobs:
           echo "📦 Installing mcp-testing-framework..."
           pip install mcp-testing-framework
           echo "✅ mcp-testing-framework installed"
-          mcp-test --version
+          mcp-test --help | head -10
       
       - name: Build pytest-mcp-server
         run: |
